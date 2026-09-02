@@ -1,9 +1,9 @@
 # Audit and Remediation Plan — Lithium Modelling Notebook Series
 
 **Date:** 2026-09-02
-**Scope:** the fourteen `Part*.ipynb` notebooks in `Model Examples/`, audited against
+**Scope:** the fourteen `Part*.ipynb` notebooks in `Advanced Opt Modeling Examples/`, audited against
 [PROJECT_CONVENTIONS.md](PROJECT_CONVENTIONS.md) and
-[Teaching Code Standard portable.md](Teaching%20Code%20Standard%20portable.md).
+[Teaching Code Standard (portable).md](../REE%204301%20-%20Energy%20System%20Modeling/Teaching%20Code%20Standard%20(portable).md).
 
 ---
 
@@ -83,7 +83,8 @@ The only difference between the two `best_response_cournot` versions:
 ```
 
 That is the fix for the default-argument-capture bug in the journal. It was applied to 4c-exact,
-4d and 4e — and never to **Part 4c**, which is where the Cournot results come from.
+4d and 4e — and never to **Part 4c**, which is where the Cournot results come from. Note there are
+**two** unfixed call sites in 4c, not one: `best_response_cournot` and `joint_profit_max`.
 
 As shipped this produces correct numbers, because `NBP_REV` is never reassigned in 4c. But cell 31
 tells the reader to try exactly that: *"`NBP_REV = 3` — a coarse revenue mesh; quantities should
