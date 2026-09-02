@@ -100,6 +100,16 @@ to *use* it rather than learn it.
 
 ## 4. Colab deployment
 
+**Decided 2026-09-02: a public GitHub repo.** That is what makes the badge a
+one-click path — no token, no Drive mount, and `pip install git+https://...`
+resolves for an anonymous student. It also means `src/` is installed rather than
+pasted into each notebook, which is the whole point of the split; the private and
+Drive-only options both force vendoring and re-create the duplication problem.
+
+Nothing sensitive ships: `gurobi.lic` is excluded by `.gitignore` as both
+`gurobi.lic` and `*.lic`, verified with `git check-ignore` before the first
+commit, and the history was started clean.
+
 Every notebook opens with a badge and this cell, and nothing else changes:
 
 ```python
@@ -169,6 +179,13 @@ and runs Part 4c to completion, and the assert passes.
 
 ### Phase 2 — migrate the rest *(the bulk — reckon a day per two notebooks)*
 
+**Scope decided 2026-09-02: all fourteen**, production track included. Parts 2b,
+2c, 4f and 5 get narration, predict-prompts and agreement asserts like the rest.
+The instructional/production distinction survives as a *sizing* decision — those
+four keep their `QUICK`/`SMALL` switches and are still the ones meant to scale —
+but not as a pedagogy exemption. Budget roughly 40% more than the ten-notebook
+path.
+
 Worst-first by orphan-cell count: 4e (18), 4c-exact (17), Parts 2 and 4d (14),
 Parts 1 and 4c (12). Each notebook: the four moves in §3, then execute and
 **commit it executed** — outputs and figures included, which is the deliberate
@@ -212,9 +229,10 @@ worst offenders against "short enough to read without scrolling".
 - **It does not touch the REE 4301 course code.** That is a separate body with the
   same duplication disease (`syntax_check` in six files in five versions) and its
   own generated-notebook drift risk. Worth doing; not this project.
-- **It does not merge the instructional and production tracks.**
-  `PROJECT_JOURNAL.md` draws that line for a reason — Parts 2b, 2c, 4f and 5 are
-  meant to be scaled, the other ten are meant to be small. They share `src/`; they
-  do not share pedagogy requirements.
+- **It does not erase the instructional/production distinction.** All fourteen get
+  the teaching treatment (decided 2026-09-02), but `PROJECT_JOURNAL.md` draws that
+  line for a reason: Parts 2b, 2c, 4f and 5 are meant to be scaled and the other
+  ten are meant to stay small. That survives as sizing switches and as what CI
+  runs nightly versus per-commit — not as a difference in how they are narrated.
 - **It does not make the notebooks configurable.** Hardcoded numbers in a teaching
   notebook are correct. See `CLAUDE.md` Part 6.
