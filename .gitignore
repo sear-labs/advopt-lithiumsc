@@ -1,0 +1,30 @@
+# --- credentials: never commit. gurobi.lic in this folder carries a WLS secret.
+gurobi.lic
+*.lic
+.env
+.env.*
+
+# --- solver / build noise
+gurobi.log
+*.lp
+*.mps
+*.sol
+*.ilp
+*.attr
+
+# --- python
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# --- os / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+*.bak
+*.pre-rebase.bak
