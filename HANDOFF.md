@@ -114,10 +114,13 @@ the commented edit example. Verified by running `pytest -q` on a fresh extractio
 of the rebuilt zip: 6 passed, including the notebook-execution test that runs the
 anti-drift assertion.
 
-So take the template's `CLAUDE.md` and its notebook shape at face value — they
-agree with this repo's standard now. One thing it still does *not* do: it ships
-its notebooks stripped of outputs, against its own "ship it executed" rule. Don't
-copy that.
+It also ships its notebooks **executed** now, which is worth opening before you
+start: `01_model_explained.ipynb` is a working example of the exact shape Part 4c
+is being converted to, with its outputs visible so you can see what "good" looks
+like without running anything.
+
+So take the template's `CLAUDE.md`, its README and its notebook shape at face
+value — they agree with this repo's standard now.
 
 ## Traps specific to this repo
 
