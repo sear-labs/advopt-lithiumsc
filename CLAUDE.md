@@ -436,6 +436,68 @@ Flag these on sight:
 
 ---
 
+## Part 10 — Two things to copy
+
+### The pre-ship checklist
+
+Before a teaching notebook goes to students:
+
+- [ ] Zero function definitions above the "streamlined version" heading.
+- [ ] Every code cell in the teaching section has markdown above it.
+- [ ] Longest teaching cell is short enough to read without scrolling.
+- [ ] At least one "predict before you run" prompt, before the first result.
+- [ ] Any wrapper appears *after* the narration, with a reproduction check.
+- [ ] The Part 4 agreement assertion is present and passes.
+- [ ] Runs top to bottom in a fresh kernel, on a clean machine, with no local files.
+- [ ] Shipped executed — outputs and figures committed.
+- [ ] Every specific number in the prose came from that run, not from memory.
+- [ ] Deliberate blanks fail with a message, not a traceback.
+- [ ] Seeds set and printed wherever anything is stochastic.
+- [ ] Dependencies pinned with upper bounds; kernel metadata matches what ran.
+
+### The prompt block
+
+Paste this into a chat when asking an assistant to write or revise teaching code.
+
+> **Teaching-code style — follow this exactly.**
+>
+> Write the top of the notebook step by step, not abstracted. One idea per cell,
+> with a markdown cell above each code cell explaining what it does and why.
+> **No function definitions and no loops in the teaching section** unless the loop
+> is genuinely mechanical repetition of an identical step. Print something after
+> each step so the reader can see it worked.
+>
+> Where a single argument or line carries the concept, say so in the markdown
+> explicitly. Before any solve, fit or simulation, add a one-line prompt asking the
+> reader to predict the result first.
+>
+> If the notebook needs the same construction several times, you may add a
+> streamlined version **at the bottom**, under a heading that says so, with one
+> sentence explaining why it is being wrapped now.
+>
+> Do not put a helper function before the narrated walkthrough of the same
+> material. If one already exists there, move it to the bottom — or, if the project
+> has a package, move it out of the notebook into the package.
+>
+> **If a package holds the same model, the notebook's last cell must import it,
+> run the same case, and assert the two agree to within 1e-9.** Deliberate
+> duplication is fine; deliberate duplication with nothing comparing the copies is
+> how a fix gets applied in three places out of four.
+>
+> Every specific number in the prose must come from actually running the code, not
+> from memory. If the prose names a particular outcome, check the answer is unique
+> — where several answers tie, different solvers or seeds produce different results
+> and the text is wrong for some readers. Break the tie with a real effect rather
+> than vaguer prose; where the degeneracy is structural, assert the invariants and
+> teach the degeneracy.
+>
+> The notebook must run top to bottom on a clean machine with no local data files:
+> fall back to generated data with a loud message saying the fallback is not an
+> acceptable submission. Where the reader must make a choice, raise an explanatory
+> error rather than letting it crash with a `NameError`.
+
+---
+
 ## The one-line versions
 
 > **Engineering:** if a clean clone can't reproduce it with one command, it's broken.
@@ -447,7 +509,7 @@ Flag these on sight:
 
 ---
 
-# Part 10 — This project specifically
+# Part 11 — This project specifically
 
 Everything above is portable. This section is not.
 
