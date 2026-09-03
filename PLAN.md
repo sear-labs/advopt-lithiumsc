@@ -122,9 +122,24 @@ resolves for an anonymous student. It also means `src/` is installed rather than
 pasted into each notebook, which is the whole point of the split; the private and
 Drive-only options both force vendoring and re-create the duplication problem.
 
-Nothing sensitive ships: `gurobi.lic` is excluded by `.gitignore` as both
+~~Nothing sensitive ships: `gurobi.lic` is excluded by `.gitignore` as both
 `gurobi.lic` and `*.lic`, verified with `git check-ignore` before the first
-commit, and the history was started clean.
+commit, and the history was started clean.~~
+
+**Corrected 2026-09-03. The last clause was false.** `gurobi.lic` was indeed
+excluded and verified — but a live WLS key was sitting in a code cell of
+`Part4c_exact_MIQP.ipynb` and in a markdown example in Parts 1, 2 and 3, and went
+into commit `9b2c0b7`, the root. The `.gitignore` rule guarded the file form of
+the credential and nothing looked at notebook content.
+
+Fixed in the working tree: Parts 1–3 never used the key (zero `env=ENV`
+references) so the values became placeholders; `Part4c_exact_MIQP` reads a
+licence from the environment or a Colab secret and defaults to `SMALL = True`,
+which fits the free licence; and `tools/credscan.py` now scans content in CI.
+
+**The key still has to be rotated** — it is in history from the root commit, and
+scrubbing history does not un-expose a key that has existed in a working tree.
+**Do not push publicly until it is rotated.**
 
 **What the split costs, stated plainly.** Today each Part 4 notebook is fully
 self-contained — every one redefines `REGIONS`, `add_region`, `set_tiers` and the

@@ -601,9 +601,17 @@ notebook, the target shape is Part 0's.
 
 ## Non-negotiables here
 
-- **`gurobi.lic` is never committed.** It carries a live `WLSSECRET`. It is in
-  `.gitignore` as both `gurobi.lic` and `*.lic`. Verify with
-  `git check-ignore -v gurobi.lic` before any `git add` in this folder.
+- **No credential is ever committed, in any form.** `gurobi.lic` is gitignored as
+  both `gurobi.lic` and `*.lic`; verify with `git check-ignore -v gurobi.lic`
+  before any `git add` here. **That path rule is necessary and was not
+  sufficient.** A live WLS key sat in a code cell of `Part4c_exact_MIQP.ipynb`
+  and in a markdown example in Parts 1, 2 and 3, and entered the repository in
+  its first commit — found 2026-09-03 while measuring which notebooks needed a
+  licence, not by any guard. A path-based rule cannot see a secret pasted into a
+  notebook. `tools/credscan.py` scans **content** and runs in CI; run it before
+  any commit that touches a notebook. Licences are read from
+  `GRB_WLSACCESSID` / `GRB_WLSSECRET` / `GRB_LICENSEID` or a Colab secret, never
+  from a literal.
 - **The free `pip` Gurobi licence is the deployment constraint:** ~2,000 variables
   for LP/MILP, but only ~150 for QP/MIQP — found by probe, not documentation. The
   instructional notebooks fit. `Part4c_exact_MIQP` does not, and ships

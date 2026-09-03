@@ -20,12 +20,17 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
-      - name: the credential must never be in the tree
+      - name: no credential file in the tree
         run: |
           if git ls-files --error-unmatch gurobi.lic 2>/dev/null; then
             echo "gurobi.lic is tracked; it carries a live WLS secret"; exit 1
           fi
           test -z "$(git ls-files '*.lic')" || { echo "a .lic file is tracked"; exit 1; }
+      - name: no credential in any tracked file's CONTENT
+        # The path check above guards the *file* form of the credential. It cannot
+        # see a key pasted into a notebook cell - which is exactly how one reached
+        # this repository's first commit. This scans content instead.
+        run: python tools/credscan.py
       - run: python scripts/run_all.py
       - run: pytest -q
       - name: every number in the prose came from a run
