@@ -354,3 +354,83 @@ def test_core_staggered_mesh_is_cheaper_than_annual(core):
     annual.update(); stag.update()
     assert stag.NumBinVars < annual.NumBinVars
     assert L.staggered_years(20) == [1, 2, 3, 4, 5, 6, 7, 9, 11, 16]
+
+
+# ------------------------------------------- Parts 2: two-stage stochastic
+@pytest.fixture(scope="module")
+def stoch(core):
+    """A small tree on a short horizon; the theory does not need a big one."""
+    small = L.build_core_structure(L.load_network_instance(ROOT / "data" / "raw"),
+                                   **{**CORE_KNOBS, "T": 12})
+    return dict(st=small, scens=L.scenarios(small), iy=[1, 4, 7, 10], s1=[1])
+
+
+def test_scenario_tree_is_a_probability_distribution(stoch):
+    scens = stoch["scens"]
+    assert abs(sum(p for _, p, _ in scens) - 1.0) < 1e-12, "probabilities must sum to 1"
+    # R1 is known in every scenario; only R2 varies. That IS the uncertainty.
+    r1 = {tuple(sorted((k, v) for k, v in D.items() if k[0] == "R1"))
+          for _, _, D in scens}
+    assert len(r1) == 1, "R1 demand differs across scenarios; it is meant to be known"
+    r2 = {tuple(sorted((k, v) for k, v in D.items() if k[0] == "R2"))
+          for _, _, D in scens}
+    assert len(r2) == len(scens), "R2 demand is identical across scenarios"
+
+
+def test_scenarios_n_of_one_is_the_mean_case(stoch):
+    one = L.scenarios_n(stoch["st"], 1)
+    assert len(one) == 1 and one[0][1] == 1.0
+
+
+def test_nonanticipativity_is_what_the_extensive_form_adds(stoch):
+    """Without the NA constraints this is three separate problems, not a program."""
+    ef = L.extensive_form(stoch["st"], stoch["scens"], stoch["iy"], stoch["s1"],
+                          mipgap=1e-6)
+    ef.update()
+    na = [c for c in ef.getConstrs() if c.ConstrName.startswith("NA_")]
+    assert na, "no nonanticipativity constraints; the scenarios are not linked"
+    n_s1 = len([k for k in ef._ys[0] if k[1] in stoch["s1"]])
+    assert len(na) == n_s1 * (len(stoch["scens"]) - 1)
+
+
+def test_the_ws_rp_eev_chain_holds(stoch):
+    """CLAUDE.md Part 6: assert the theory, and evaluate all three identically."""
+    r = L.three_case_comparison(stoch["st"], stoch["scens"], stoch["iy"],
+                                stoch["s1"], mipgap=1e-6)
+    assert r["WS"] <= r["RP"] + 1e-6, "wait-and-see must be a lower bound on RP"
+    assert r["RP"] <= r["EEV"] + 1e-6, "the mean-value plan cannot beat the SP plan"
+    # and per scenario, perfect information beats both
+    for i, (pi, sp, ev) in enumerate(zip(r["per"]["PI"], r["per"]["SP"],
+                                         r["per"]["EV"])):
+        assert pi["cost"] <= sp["cost"] + 1e-6, f"scenario {i}: PI > SP"
+        assert pi["cost"] <= ev["cost"] + 1e-6, f"scenario {i}: PI > EV"
+
+
+def test_progressive_hedging_is_deterministic(stoch):
+    """There is no seed because nothing is random. Two runs must be identical."""
+    kw = dict(rho=300, iters=8)
+    a = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
+                              stoch["s1"], **kw)
+    b = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
+                              stoch["s1"], **kw)
+    assert a["resid"] == b["resid"], "PH is not reproducible run to run"
+    assert a["z"] == b["z"]
+
+
+def test_ph_block_variant_solves_fewer_subproblems(stoch):
+    """The point of the block-asynchronous variant, asserted rather than claimed."""
+    full = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
+                                 stoch["s1"], rho=300, iters=8, block_frac=1.0)
+    half = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
+                                 stoch["s1"], rho=300, iters=8, block_frac=0.5)
+    assert half["subsolves"] < full["subsolves"]
+
+
+def test_ph_penalty_stays_linear(stoch):
+    """The x^2 = x trick: subproblems must remain MILPs, never MIQPs."""
+    sub = L.subproblem(stoch["st"], stoch["scens"][0][2], stoch["iy"], stoch["s1"])
+    sub.update()
+    assert sub.NumQNZs == 0, (
+        "a subproblem picked up quadratic terms; the binary linearisation is the "
+        "only reason these stay inside a restricted licence"
+    )

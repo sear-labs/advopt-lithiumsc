@@ -33,6 +33,12 @@ from .planner import solve_planner
 from .policy import (local_content_schedule, quota_schedule, tariff_schedule,
                      welfare)
 from .regions import add_region
+from .stochastic import (eval_strategy_by_scenario, evaluate_stage1,
+                         extensive_form, mean_value_stage1,
+                         perfect_info_by_scenario, ph_three_case,
+                         progressive_hedging, scenarios, scenarios_n,
+                         stage1_keys, strategy_stage1, subproblem,
+                         three_case_comparison, wait_and_see)
 from .structure import Structure, build_structure
 
 __version__ = "0.1.0"
@@ -47,6 +53,11 @@ __all__ = [
     "CoreStructure", "build_core_structure", "build", "build_plan",
     "capex_pv_multiplier", "learning_breakpoints", "solve",
     "evaluate_plan", "rolling_horizon", "staggered_years",
+    "scenarios", "scenarios_n", "extensive_form", "stage1_keys",
+    "subproblem", "progressive_hedging", "evaluate_stage1",
+    "wait_and_see", "mean_value_stage1", "eval_strategy_by_scenario",
+    "strategy_stage1", "perfect_info_by_scenario",
+    "three_case_comparison", "ph_three_case",
     "stackelberg", "follower_qp", "follower_marginal_cost", "follower_legacy",
     "tariff_schedule", "quota_schedule", "local_content_schedule", "welfare",
     "inverse_demand", "best_response_cournot", "cournot_iterate",
