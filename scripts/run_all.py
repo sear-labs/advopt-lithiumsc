@@ -64,6 +64,9 @@ QUOTA_LEVELS = [60.0, 30.0, 10.0]
 LCR_LEVELS = [40.0, 70.0]
 DETERRENCE_TARIFFS = [0.0, 3.0, 6.0, 10.0]
 GRID_POINTS = [3, 4, 6, 8]
+# Part 4ab
+WEIGHTS = [0.1, 0.3, 0.5, 0.7, 0.9]
+MAX_ITER_4B = 10
 
 BLUE, ORANGE, GREEN, RED, PURPLE = "#2471a3", "#d68910", "#196f3d", "#c0392b", "#8e44ad"
 
@@ -112,6 +115,93 @@ def _show(name, frame):
     frame.to_csv(TABLES / f"{name}.csv", index=False)
     print("\n", frame.to_string(index=False), sep="")
     return frame
+
+
+# ==========================================================================
+def run_4ab(ctx):
+    """Parts 4a and 4b - the cooperative planner, and the fixed-price game."""
+    struct, regions, P = ctx["struct"], ctx["struct"].regions, ctx["struct"].P
+    kw = ctx["region_kw"]
+    print("\n=== 4ab: planner frontier and the fixed-price game ===")
+
+    rows = []
+    for w in WEIGHTS:
+        mw = L.solve_planner(struct, w1=w, learning="both", pen_short=PEN_SHORT,
+                             mipgap=MIPGAP_PLAN, **kw)
+        assert mw.SolCount > 0, f"w={w} found no solution"
+        H = mw._H
+        rows.append(dict(weight_R1=w, weighted_obj=round(mw.ObjVal, 1),
+                         **{f"cost_{r}": round(H[r]["cost"].getValue(), 1)
+                            for r in regions},
+                         **{f"builds_{r}": sum(1 for k in H[r]["b"]
+                                               if H[r]["b"][k].X > 0.5)
+                            for r in regions},
+                         shortfall=round(sum(mw._short[rt, p].X
+                                             for rt in regions for p in P), 2)))
+    frontier = _show("pareto_frontier", pd.DataFrame(rows))
+    splits = list(zip(frontier.builds_R1, frontier.builds_R2))
+    assert len(set(splits)) < len(splits), \
+        "the Pareto frontier is smoother than the lumpy-investment story claims"
+
+    runs, rows = {}, []
+    for first in regions:
+        res = L.iterate_fixed_price(struct, learning="both", first=first,
+                                    max_iter=MAX_ITER_4B, mipgap=MIPGAP_PLAN, **kw)
+        runs[first] = res
+        last = _last(res, regions)
+        rows.append(dict(first_mover=first, status=res["status"],
+                         repeat_length=res.get("cycle_len"), iterations=res["iters"],
+                         **{f"profit_{r}": round(last[r]["profit"], 1)
+                            for r in regions},
+                         **{f"sales_{r}": round(last[r]["total_sales"], 1)
+                            for r in regions}))
+    orders = _show("move_order_fixed_price", pd.DataFrame(rows))
+    assert (orders.status == "CONVERGED").all(), "a move order failed to converge"
+    assert orders.profit_R1[0] != orders.profit_R1[1], \
+        "both move orders gave the same equilibrium; no first-mover effect"
+
+    # the cost of rivalry, with the comparison MATCHED - see 04ab section 12
+    res = runs[regions[0]]
+    comp_cost, served = 0.0, {}
+    for r in regions:
+        rival = {}
+        for other in regions:
+            if other == r:
+                continue
+            for k, v in res["sales"][other].items():
+                rival[k] = rival.get(k, 0.0) + v
+        br = L.best_response_fixed_price(r, rival, struct, learning="both",
+                                         mipgap=MIPGAP_PLAN, **kw)
+        comp_cost += br._h["cost"].getValue()
+        for rt in regions:
+            for p in P:
+                served[rt, p] = served.get((rt, p), 0.0) + br._h["sale"][rt, p].X
+    coop = L.solve_planner(struct, w1=0.5, learning="both", pen_short=PEN_SHORT,
+                           mipgap=MIPGAP_PLAN, **kw)
+    coop_cost = sum(coop._H[r]["cost"].getValue() for r in regions)
+    coop_total = coop_cost + coop._pen.getValue()
+    unserved = sum(struct.DEMAND.values()) - sum(served.values())
+    pen_comp = sum(struct.OMEGA[p] * PEN_SHORT
+                   * max(0.0, struct.DEMAND[rt, p] - served[rt, p])
+                   for rt in regions for p in P)
+    rivalry = _show("cost_of_rivalry", pd.DataFrame([
+        dict(comparison="naive (different volumes)",
+             planner=round(coop_cost, 1), competitive=round(comp_cost, 1),
+             pct=round(100 * (comp_cost - coop_cost) / coop_cost, 2),
+             valid=False),
+        dict(comparison="welfare-inclusive",
+             planner=round(coop_total, 1),
+             competitive=round(comp_cost + pen_comp, 1),
+             pct=round(100 * (comp_cost + pen_comp - coop_total) / coop_total, 1),
+             valid=True),
+    ]))
+    # the naive answer must come out impossible; that is the lesson, not a bug
+    assert comp_cost < coop_cost, "the naive comparison was expected to be negative"
+    assert coop_total <= comp_cost + pen_comp + 1e-3, \
+        "the welfare-inclusive bound is violated"
+    print(f"unserved by the firms: {unserved:.1f} of "
+          f"{sum(struct.DEMAND.values()):.1f} demanded")
+    return dict(frontier=frontier, orders=orders, rivalry=rivalry, runs=runs)
 
 
 # ==========================================================================
@@ -391,7 +481,7 @@ def run_4e(ctx):
     return dict(tariffs=tariffs, quotas=quotas, lcr=lcr, deterrence=deter)
 
 
-SECTIONS = {"4c": run_4c, "4d": run_4d, "4e": run_4e}
+SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
 
 
 def main() -> None:

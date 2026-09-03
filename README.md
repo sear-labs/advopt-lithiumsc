@@ -41,6 +41,7 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 
 | Notebook | What it covers | |
 |---|---|---|
+| `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
 | `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
 | `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb) |
@@ -49,7 +50,7 @@ The badge is a one-click path: it clones this repo, `pip install -e .`, and runs
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
 notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
 
-The other eleven notebooks are still at the repository root in their pre-migration form
+The other ten notebooks are still at the repository root in their pre-migration form
 (`Part0_Concepts_Guide.ipynb` and friends) and are migrated in Phase 2 of `PLAN.md`.
 
 ---
@@ -74,6 +75,7 @@ src/lithium/              the streamlined track
   data/                     a copy of data/raw/, shipped as package data
 
 notebooks/                the teaching track
+  04ab_planner_and_game.ipynb  the planner and the first game, built by hand
   04c_cournot.ipynb         built by hand, narrated, ends in the agreement assertion
   04d_stackelberg.ipynb     the MPEC by hand; carries 04c's chain over, marked
   04e_policy.ipynb          the three levers by hand; carries 04c and 04d over, marked

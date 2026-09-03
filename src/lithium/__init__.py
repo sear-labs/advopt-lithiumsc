@@ -17,8 +17,10 @@ Quick start::
 """
 from .curves import (capex_breakpoints, capex_cum_multiplier,
                      capex_unit_multiplier, opex_tiers, revenue_breakpoints)
-from .games import (best_response_cournot, cournot_iterate, inverse_demand,
-                    joint_profit_max, market_outcome)
+from .games import (best_response_cournot, best_response_fixed_price,
+                    best_response_miqp, cournot_iterate,
+                    cournot_iterate_miqp, inverse_demand,
+                    iterate_fixed_price, joint_profit_max, market_outcome)
 from .instance import Instance, load_instance, read_tables
 from .mpec import (follower_legacy, follower_marginal_cost, follower_qp,
                    stackelberg)
@@ -40,5 +42,7 @@ __all__ = [
     "tariff_schedule", "quota_schedule", "local_content_schedule", "welfare",
     "inverse_demand", "best_response_cournot", "cournot_iterate",
     "joint_profit_max", "market_outcome",
+    "best_response_fixed_price", "iterate_fixed_price",
+    "best_response_miqp", "cournot_iterate_miqp",
     "__version__",
 ]
