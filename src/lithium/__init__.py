@@ -22,6 +22,8 @@ from .games import (best_response_cournot, best_response_fixed_price,
                     cournot_iterate_miqp, inverse_demand,
                     iterate_fixed_price, joint_profit_max, market_outcome)
 from .instance import Instance, load_instance, read_tables
+from .network_instance import (NetworkInstance, load_network_instance,
+                               read_network_tables)
 from .mpec import (follower_legacy, follower_marginal_cost, follower_qp,
                    stackelberg)
 from .planner import solve_planner
@@ -34,6 +36,7 @@ __version__ = "0.1.0"
 
 __all__ = [
     "Instance", "load_instance", "read_tables",
+    "NetworkInstance", "load_network_instance", "read_network_tables",
     "Structure", "build_structure",
     "capex_unit_multiplier", "capex_cum_multiplier", "capex_breakpoints",
     "revenue_breakpoints", "opex_tiers",

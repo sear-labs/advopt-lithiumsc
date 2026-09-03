@@ -1,0 +1,7 @@
+site,tier,home,cap_unit,lead,capex0,opex,legacy_units,legacy_vintage,legacy_retire
+M1,M,R1,110,2,1800,1.2,2,-6,7
+M2,M,R2,110,2,2000,1.4,2,-6,10
+P1,P,R1,100,3,3300,2.0,2,-3,12
+P2,P,R2,100,3,3100,2.2,2,-3,15
+F1,F,R1,90,2,2900,2.5,2,-1,16
+F2,F,R2,90,2,2700,2.3,2,-1,19

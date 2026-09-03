@@ -225,3 +225,49 @@ def test_a_readers_instance_edit_flows_through(setup):
         "cutting R2's processing opex from 2.2 to 2.00 did not raise its profit; "
         "the edit is not reaching the model"
     )
+
+
+# ------------------------------------------- the Parts 1/2/5 network instance
+def test_network_instance_loads_from_both_sources():
+    """A different model family from the Part 4 chain; same tables/knobs rule."""
+    packaged = L.load_network_instance()
+    editable = L.load_network_instance(ROOT / "data" / "raw")
+    assert packaged == editable, (
+        "src/lithium/data/ has drifted from data/raw/ for the network tables"
+    )
+    assert packaged.sites == ["M1", "M2", "P1", "P2", "F1", "F2"], (
+        "site order is what models iterate in; it must follow the CSV"
+    )
+    assert packaged.regions == ("R1", "R2")
+
+
+def test_network_instance_rejects_a_site_in_an_unknown_region(tmp_path):
+    for name in ("network_tiers.csv", "network_demand.csv"):
+        (tmp_path / name).write_bytes((ROOT / "data" / "raw" / name).read_bytes())
+    rows = (ROOT / "data" / "raw" / "network_sites.csv").read_text().splitlines()
+    rows[1] = rows[1].replace(",R1,", ",R9,")
+    (tmp_path / "network_sites.csv").write_text("\n".join(rows) + "\n")
+    with pytest.raises(ValueError, match="regions absent"):
+        L.load_network_instance(tmp_path)
+
+
+def test_network_instance_needs_all_three_tiers(tmp_path):
+    for name in ("network_tiers.csv", "network_demand.csv"):
+        (tmp_path / name).write_bytes((ROOT / "data" / "raw" / name).read_bytes())
+    rows = (ROOT / "data" / "raw" / "network_sites.csv").read_text().splitlines()
+    keep = [rows[0]] + [r for r in rows[1:] if not r.startswith(("M1", "M2"))]
+    (tmp_path / "network_sites.csv").write_text("\n".join(keep) + "\n")
+    with pytest.raises(ValueError, match="at least one site of each tier"):
+        L.load_network_instance(tmp_path)
+
+
+def test_network_demand_rebuilds_from_base_and_growth():
+    """The 240-entry demand table is derived, not stored - so it must derive right."""
+    inst = L.load_network_instance(ROOT / "data" / "raw")
+    d = {(g, t): inst.demand_base[g] * (1 + inst.demand_growth[g]) ** (t - 1)
+         for g in inst.regions for t in range(1, 21)}
+    assert len(d) == 40
+    assert abs(d["R1", 1] - 110.0) < 1e-12
+    assert abs(d["R2", 1] - 85.0) < 1e-12
+    # R2 grows faster, so it must overtake R1 inside a 20-year horizon
+    assert d["R2", 20] > d["R1", 20], "the asymmetry the instance exists for is gone"
