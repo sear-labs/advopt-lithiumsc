@@ -1,0 +1,4 @@
+stage,eta_ceil,eta_base,alpha,beta,delta_bar
+MINE,0.92,0.86,0.0,0.0,0.02
+PROC,0.95,0.80,0.030,0.010,0.05
+MFG,0.93,0.78,0.025,0.008,0.05

@@ -1,0 +1,30 @@
+# Runs the pipeline AND executes every notebook on a clean machine.
+# The clean machine is the point: it catches "works on my laptop" bugs, which are
+# exactly the bugs that break someone else's Colab.
+#
+# No licence secret is needed. The `gurobipy` wheel ships a size-limited licence
+# good for roughly 2,000 variables of LP/MILP; the planner here is 1,109 and the
+# best response 906, so both fit. If a future model exceeds that, this job starts
+# failing with a licence error rather than a wrong answer — which is the right
+# way round.
+name: pipeline
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]"
+      - name: the credential must never be in the tree
+        run: |
+          if git ls-files --error-unmatch gurobi.lic 2>/dev/null; then
+            echo "gurobi.lic is tracked; it carries a live WLS secret"; exit 1
+          fi
+          test -z "$(git ls-files '*.lic')" || { echo "a .lic file is tracked"; exit 1; }
+      - run: python scripts/run_all.py
+      - run: pytest -q

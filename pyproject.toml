@@ -1,0 +1,33 @@
+# Makes the package installable, which is what actually makes imports reliable
+# in Colab. `pip install -e .` puts `lithium` on the path permanently — no
+# sys.path hacks, no dependence on the working directory.
+#
+# The three instance CSVs ship as package data (see [tool.setuptools.package-data])
+# so `pip install git+https://...` carries them into Colab with no repo checkout.
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lithium"
+version = "0.1.0"
+description = "Lithium supply-chain optimisation models — the streamlined half of the teaching series"
+requires-python = ">=3.10"
+dependencies = [
+    "gurobipy>=12,<14",
+    "pandas>=2.0,<3",
+    "numpy>=1.24,<3",
+    "matplotlib>=3.7,<4",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.0,<9", "nbclient>=0.9,<1", "nbformat>=5.9,<6", "ipykernel"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+lithium = ["data/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

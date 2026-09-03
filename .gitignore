@@ -28,3 +28,14 @@ Thumbs.db
 desktop.ini
 *.bak
 *.pre-rebase.bak
+
+# --- generated results. results/figures IS tracked on purpose (see README).
+results/tables/*
+!results/tables/.gitkeep
+
+# --- pytest
+.pytest_cache/
+
+# --- the notebook's loud no-data fallback writes here; never a real instance
+_generated_fallback/
+notebooks/_generated_fallback/

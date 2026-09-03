@@ -251,18 +251,33 @@ scenarios to 3.3% at 20. Never quote VSS from a handful of scenarios.
 intermediate values cycle. Always sweep.
 
 **Production learning changed no decision under cost minimisation** — cumulative production was pinned
-by demand. Once quantity became a decision in Part 4c, output rose 13% and price fell. **Learning also
-amplifies incumbency**: the firm further along the curve gains more per marginal unit.
+by demand. Once quantity became a decision in Part 4c, output rose **15.2%** (1,976.4 → 2,276.5) and
+average price fell 1.84 (17.65 → 15.81). **Learning also amplifies incumbency**: R1 gained 17.6% of
+output against R2's 12.3%, because the firm further along the curve gains more per marginal unit.
+(Previously recorded as 13%; corrected 2026-09-03 from the run that ships with
+`notebooks/04c_cournot.ipynb`.)
 
 **Pump-and-dump never pays under cost minimisation** — not even with free disposal and LR = 55%, since
 utilisation is already 90%+ and dumping would require building. Flooding is a *competitive*
 phenomenon, and when it appears it works through **sales at a depressed price**, not disposal.
 
-**Fixed price manufactured a first-mover advantage.** 29% at fixed price, ~4% under Cournot. Price
-adjustment substitutes for rationing. Results that depend on a rationing rule deserve suspicion.
+**Fixed price manufactured a first-mover advantage.** 29.1% at fixed price (7,612.7 moving first vs
+5,895.7 moving second), 4.4% under Cournot. Price adjustment substitutes for rationing. Results that
+depend on a rationing rule deserve suspicion. Both figures re-executed 2026-09-03.
 
-**Commitment is worth ~20% of leader profit**, and it suppresses the follower's *capital formation* —
-the durable form of deterrence, which then compounds through the learning channel.
+**Commitment is worth +24.6% of leader profit** (13,789.8 Stackelberg vs 11,070.7 Cournot, from a
+2026-09-03 re-execution of `Part4d_Stackelberg_MPEC.ipynb`), and it suppresses the follower's
+*capital formation* — the durable form of deterrence, which then compounds through the learning
+channel. This entry previously read "~20%", carried over from a stale Cournot figure of 11,527;
+Part 4d's own cells 28 and 35 still quote that stale pair and are corrected when that notebook is
+migrated (`PLAN.md` Phase 2).
+
+**Collusion shuts the entrant down entirely.** Under joint profit maximisation in Part 4c, R2 sells
+zero and builds nothing; R1 serves both markets alone, and the cartel's profit (22,869.98) is exactly
+R1's monopoly profit. It is not assumed — R1's accumulated experience puts it on a cheaper operating
+tier, and a cartel choosing one total quantity has no reason to serve any of it from the higher-cost
+chain. The 2.4 cross-region transport premium keeps R2 alive in the *competitive* equilibrium but not
+in the collusive one. Found 2026-09-03 while building the Phase 1 slice.
 
 **Tariffs redistribute and shrink.** Protection lifts R2's profit 6,713 → 11,124 but total welfare
 falls 38,995 → 35,859 at every level tested; deadweight loss exceeds revenue collected, and tariff
@@ -276,6 +291,12 @@ the same distortion.
 profit *falls* (6,713 → 5,289) while R1's rises. A tariff raises a rival's cost; a quantity mandate
 constrains *your own* firm's optimisation, and if it binds in an unwanted direction it destroys value
 domestically.
+
+> **Verification status (2026-09-03).** The Part 4b, 4c and 4d figures above come from executions on
+> that date. The Part 4e figures (tariffs, quotas, local content) and the stochastic-programming
+> figures have **not** been re-executed since, so treat them as claims pending re-verification when
+> those notebooks are migrated — `PLAN.md` Phase 2. Three of the numbers in this list were found stale
+> when their notebooks were re-run; assume others are.
 
 **Entry deterrence is robust to moderate intervention, then breaks suddenly.** Follower capacity is
 completely unmoved (60.45) at tariffs of 0, 3 and 6 — the leader absorbs the duty and holds its

@@ -182,17 +182,33 @@ call sites, redundant cell removed, Part 0 kernel metadata corrected, `CLAUDE.md
 written, stale references in the audit fixed. Part 4c re-executed: 0 errors,
 30.0 s, every number unchanged.
 
-### Phase 1 — one vertical slice, end to end *(a day)*
+### Phase 1 — done (2026-09-03)
 
-Do **one** notebook completely rather than one phase across fourteen. Part 4c is
+Do **one** notebook completely rather than one phase across fourteen. Part 4c was
 the right choice: it carries the most-duplicated code in the series
 (`_rev_breakpoints` ×8, `add_region` ×5), it runs in 30 s, and it exercises every
 piece of the pattern at once.
 
-- [ ] Unzip `dispatch-template.zip` as the skeleton — it is already a working
-      archetype-A repo and its `CLAUDE.md` is `PROJECT_CONVENTIONS.md` verbatim.
-      Do not design this from scratch.
-- [ ] `src/lithium/` with the Part 4 family's shared code; `pip install -e .`
+**Built.** `pyproject.toml`, `tests/`, `.github/workflows/ci.yml`,
+`scripts/run_all.py` and `results/` taken from the template;
+`data/{interim,processed}`, `clean.py` and `config.yaml` dropped as decided.
+`src/lithium/` holds `instance.py`, `structure.py`, `curves.py`, `regions.py`,
+`planner.py`, `games.py`. `notebooks/04c_cournot.ipynb` is 86 cells, 47 of them
+markdown, every code cell narrated, longest teaching cell 28 lines, first
+function definition at 72% through (no inversion). Full suite: **18 passed in
+25 s**. `run_all.py`: **11.1 s**. Notebook: **17.0 s, 0 errors, shipped
+executed**.
+
+**Measured against the original before anything else.** The package was diffed
+against Part 4c's own code executed verbatim: `LEN`, `START`, `HORIZON`, `OMEGA`,
+`CRF`, `MU` (39 keys), `ETA` (546 keys), `DEMAND`, `ACTIVE`, `VIN`, `BUILD`,
+`QBP`, `CBP`, `A_INT`, `B_SLP` all identical; planner objective, best response
+and joint-profit-max all agreeing at **rel 0.00e+00**. The port changed no
+number.
+
+- [x] Unzip `dispatch-template.zip` as the skeleton — it is already a working
+      archetype-A repo and its `CLAUDE.md` is the merged standard.
+- [x] `src/lithium/` with the Part 4 family's shared code; `pip install -e .`
 - [x] **Adjudicated 2026-09-02** by hashing every top-level `def` body across all
       fourteen notebooks and diffing the groups. Two of the four pairs no longer
       exist — Phase 0 closed them, so the audit's §1.2 table is a pre-Phase-0
@@ -218,19 +234,44 @@ piece of the pattern at once.
       - Also: the default-argument capture is still latent in the source —
         `def _rev_breakpoints(..., n=NBP_REV)` — and harmless only because all
         seven call sites now override it. The default goes away in the package.
-- [ ] Pull the three instance CSVs out of Part 4c per *Tables versus knobs*; ship
-      them as package data so `pip install git+...` carries them into Colab
-- [ ] Rewrite `notebooks/04c_cournot.ipynb` to the Part 0 shape, with the load /
-      render / show-the-keys / commented-edit-example cells, and the agreement
-      assert taking the instance as an argument
-- [ ] Break a constraint in `src/lithium/` on purpose and confirm the assertion
-      goes **red** — a green assert that has never failed is not yet evidence
-- [ ] Colab bootstrap + badge; open it in Colab and run it top to bottom
-- [ ] Fix the one wrong published claim now, independently: `PROJECT_JOURNAL.md`
-      says commitment is worth ~20%; the current run says **24.6%**
+- [x] Pull the three instance CSVs out of Part 4c per *Tables versus knobs*.
+      `data/raw/` is the editable copy, `src/lithium/data/` the package copy;
+      `test_instance_loads_from_both_sources` asserts they are identical, and a
+      built wheel was inspected to confirm all three CSVs ship inside it.
+- [x] Rewrite `notebooks/04c_cournot.ipynb` to the Part 0 shape. The 85 lines
+      that were inside `add_region` are now 24 narrated cells across sections 5
+      and 7; three predict-before-you-run prompts; the load / render /
+      show-the-keys / commented-`OPEX['PROC','R2'] = 2.00` cells are section 2.
+      Agreement assert is the last cell and passes at **0.0e+00**.
+- [x] Assert the `add_region` collapse. `test_policy_superset_collapses` — empty
+      `TARIFF`/`QUOTA`/`LOCAL_MIN` reproduce 4c's objective to 0.0e+00 and add
+      **zero** constraints; `test_a_real_tariff_does_change_the_answer` is the
+      mirror, so the superset cannot pass by being inert.
+- [x] Break a constraint on purpose. Flipping `c >= CAP_MIN * b` to
+      `c >= CAP_MIN * (1 - b)` in `regions.py` made the packaged objective
+      **-3,257.57** against the notebook's 22,869.98 and the assertion failed
+      with `disagree by 1.14e+00`. Gurobi still returned status 2 and every other
+      cell was unaffected. Reverted, and the measured numbers are quoted in the
+      notebook's section 12.1 so a reader sees what a red assert looks like.
+- [x] Colab bootstrap + badge, in cell 0 and in `README.md`. **`USERNAME` is
+      still a placeholder** — it resolves once the repo exists, which is the one
+      acceptance step that cannot be run yet.
+- [x] Fix the one wrong published claim: `PROJECT_JOURNAL.md` said ~20%; the
+      2026-09-03 run of Part 4d says **+24.6%** (13,789.8 vs 11,070.7). The old
+      figure came from a stale Cournot value of 11,527. While there, two more
+      journal claims were re-executed and corrected — production learning is
+      **+15.2%**, not 13%, and the fixed-price first-mover advantage is 29.1%
+      against Cournot's 4.4%.
+
+**Verified without a repo.** `pip install -e .` and import shown; the wheel
+carries the CSVs; the notebook runs top to bottom from a directory with **no
+`data/raw/`**, printing the loud fallback banner and still passing its agreement
+assertion, because both sides read the same fallback dictionaries. What remains
+untested is the badge itself.
 
 **Acceptance:** a student with a Google account and no software opens the badge
-and runs Part 4c to completion, and the assert passes.
+and runs Part 4c to completion, and the assert passes. Everything but the badge
+resolution is verified locally.
 
 ### Phase 2 — migrate the rest *(the bulk — reckon a day per two notebooks)*
 
