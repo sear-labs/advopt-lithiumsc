@@ -96,11 +96,12 @@ Pick one. Each lists only its **delta** from Part 1.
 `config.yaml`, `scenarios/`, `data/{raw,interim,processed}/`, `src/<pkg>/`,
 `scripts/run_all.py`, `notebooks/`, `results/{figures,tables}/`, `tests/`.
 Three data tiers, one-way flow — never one merged `output/` folder, or you lose
-track of what derives from what and a plot tweak forces a full re-solve. Stages
+track of what derives from what and a plot tweak forces a full recompute. Stages
 are importable functions, not logic in `__main__`. `pyproject.toml` so
 `pip install -e .` works — required for Colab, and it removes all `sys.path`
-fragility. Smoke test asserts the domain invariants (conservation, capacity
-limits, non-negativity).
+fragility. Smoke test asserts the domain invariants — whatever must be true of
+any correct output, such as totals that have to balance or quantities that
+cannot go negative.
 
 **B — Dashboard.** Keep A underneath; the app is a presentation layer. **It must
 not run the model on page load** — precompute into `data/processed/` and have the
@@ -164,7 +165,7 @@ already knows what it contains.
 - **Markdown above every code cell**, saying what it does and, where there's a
   choice, why this choice.
 - **Name the argument that matters.** When one keyword carries the concept, say so:
-  *this single argument is what turns a dispatch model into an investment model.*
+  *this one flag is the difference between a dry run and a real one.*
   Students skim code; they do not skim a sentence that says "this is the important
   line."
 - **Print something after each step** — the shape of a table, the number of rows,
@@ -326,7 +327,8 @@ and looked fine:
 - **A silently empty object.** An API called in the wrong order returns an empty
   model / frame / result. It "succeeds," reports success, evaluates to zero, and
   passes any assertion written against it. Guard with a *shape* assert —
-  `assert relaxed.NumConstrs > 0` — not a status check.
+  `assert len(result.rows) > 0`, `assert model.n_constraints > 0` — not a
+  status check.
 - **Default-argument capture.** `def f(..., n=GLOBAL)` freezes the value at
   definition time. Sweeping `GLOBAL` afterwards changes nothing, silently, and the
   reader concludes the sweep did nothing interesting.
@@ -337,26 +339,27 @@ and looked fine:
 - **Cell-order dependence.** A cell that only works because of what an earlier
   *manual* run left in the kernel. A fresh-kernel top-to-bottom execution is the
   only real test; a static scope check catches most of it cheaply.
-- **Comparing two different measurements.** A gap-terminated solve value differenced
-  against an exactly-evaluated one produced an impossible negative statistic. If
-  two numbers are compared, one function should produce both.
-- **Comparing across different feasible sets.** A "cost of rivalry" came out
-  negative because the two configurations were not solving the same problem — one
-  was obliged to meet demand and the other wasn't. Match the comparison before
-  interpreting the difference.
+- **Comparing two different measurements.** A value taken from an early-terminated
+  run, differenced against one computed exactly, produced an impossible negative
+  statistic. If two numbers are compared, one function should produce both.
+- **Comparing two things that were not asked the same question.** A "cost of X"
+  came out negative because one configuration was required to satisfy a constraint
+  the other was free to ignore. Match the comparison before interpreting the
+  difference.
 
 ### Assert the theory in code
 
 Domain invariants belong in assertions, not in prose. When they fail, the plumbing
-is wrong — not the science. Examples of the shape: a bound that must order
-(`WS <= RP <= EEV`), a relaxation that must not exceed its parent, conservation,
-non-negativity, a wrapper reproducing a hand-built result.
+is wrong — not the science. Examples of the shape: a chain of bounds that must stay
+ordered, an approximation that must not beat the exact answer it approximates, a
+quantity that must be conserved, a value that cannot go negative, a wrapper
+reproducing a hand-built result.
 
 ### Non-reproducible prose
 
 If prose names a specific outcome — *"it charges in hours 11–16"*, *"the second
 iteration is where it drops"* — **verify the answer is unique.** Wherever several
-answers tie, different solvers, versions, orderings or seeds hand students
+answers tie, different libraries, versions, orderings or seeds hand students
 different results and your text is wrong for some of them.
 
 Two fixes, in order of preference: add a small real effect that breaks the tie (a
@@ -486,7 +489,7 @@ Paste this into a chat when asking an assistant to write or revise teaching code
 >
 > Every specific number in the prose must come from actually running the code, not
 > from memory. If the prose names a particular outcome, check the answer is unique
-> — where several answers tie, different solvers or seeds produce different results
+> — where several answers tie, different libraries or seeds produce different results
 > and the text is wrong for some readers. Break the tie with a real effect rather
 > than vaguer prose; where the degeneracy is structural, assert the invariants and
 > teach the degeneracy.
