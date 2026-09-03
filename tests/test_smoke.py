@@ -456,6 +456,155 @@ def test_ph_block_variant_solves_fewer_subproblems(stoch):
     assert half["subsolves"] < full["subsolves"]
 
 
+# --------------------------------------------------------------------------
+# Parts 2b and 2c: the two-stage capacity network
+
+
+@pytest.fixture(scope="module")
+def ts():
+    inst = L.load_twostage_instance(ROOT / "data" / "raw")
+    st = L.build_twostage_structure(inst)
+    return dict(st=st, demand=L.demand_scenarios(st, n=12, seed=11),
+                shock=L.shock_scenarios(st, n=16, seed=7))
+
+
+def test_twostage_instance_tables_load(ts):
+    inst = ts["st"].inst
+    assert inst.stages == ("MINE", "PROC", "MFG")
+    assert inst.regions == ("R1", "R2")
+    assert len(ts["st"].nodes) == 6 and len(ts["st"].arcs) == 12
+    assert all(0 < e <= 1 for e in inst.eta.values()), "a yield must be in (0, 1]"
+
+
+def test_lshaped_reproduces_the_extensive_form(ts):
+    """The cuts are exact at the point they are generated, so this is not
+    'close enough' - at convergence the two are the same problem."""
+    st, sc = ts["st"], ts["demand"]
+    ef = L.twostage.extensive_form(st, sc)
+    ef.optimize()
+    r = L.lshaped(st, sc, max_iter=200)
+    rel = abs(r["value"] - ef.ObjVal) / abs(ef.ObjVal)
+    assert rel < 1e-9, f"L-shaped disagrees with the extensive form by {rel:.2e}"
+
+
+def test_lshaped_bounds_bracket_the_optimum(ts):
+    """The master is a relaxation and the evaluated plan is feasible, so the
+    optimum must lie between them. If it does not, a cut removed it."""
+    st, sc = ts["st"], ts["demand"]
+    ef = L.twostage.extensive_form(st, sc)
+    ef.optimize()
+    r = L.lshaped(st, sc, max_iter=200)
+    assert r["bound"] <= ef.ObjVal + 1e-6, "a cut cut off the true optimum"
+    assert r["value"] >= ef.ObjVal - 1e-9, "a feasible plan beat the optimum"
+
+
+def test_single_cut_finds_the_same_optimum_more_slowly(ts):
+    st, sc = ts["st"], ts["demand"]
+    multi = L.lshaped(st, sc, max_iter=200)
+    single = L.lshaped(st, sc, max_iter=400, multicut=False)
+    rel = abs(multi["value"] - single["value"]) / abs(multi["value"])
+    assert rel < 1e-9, "the two cut styles found different optima"
+    assert single["iters"] > multi["iters"], \
+        "aggregating 12 cuts into 1 cost no iterations, which would be a surprise"
+
+
+def test_recourse_duals_are_nonpositive(ts):
+    """More capacity can never make a minimisation problem worse, so every dual
+    on `x[n] <= c[n]` must be <= 0. A positive one means the cut has the wrong
+    sign and the L-shaped loop will converge to the wrong answer."""
+    st = ts["st"]
+    zero = {n: 0.0 for n in st.nodes}
+    for scen in ts["demand"][:4]:
+        _, beta = L.twostage.recourse(st, scen, zero)
+        assert all(b <= 1e-9 for b in beta.values()), \
+            f"a capacity dual came out positive: {beta}"
+        assert any(abs(b) > 1e-9 for b in beta.values()), \
+            "every dual was zero, so the cut from this scenario is a flat line"
+
+
+def test_optimal_plan_sits_on_the_yield_chain(ts):
+    """Each stage is sized to what the stage above can feed it; more would be
+    capacity that can never be used. A structural property, not a coincidence."""
+    st = ts["st"]
+    ef = L.twostage.extensive_form(st, ts["demand"])
+    ef.optimize()
+    plan = L.twostage.capacity_plan(ef, st)
+    built = [r for r in st.regions if plan["MINE", r] > 1e-6]
+    assert built, "nothing was built at all"
+    for r in built:
+        mine = plan["MINE", r]
+        assert abs(plan["PROC", r] - mine * st.inst.eta["MINE"]) < 1e-6
+        assert abs(plan["MFG", r]
+                   - mine * st.inst.eta["MINE"] * st.inst.eta["PROC"]) < 1e-6
+
+
+def test_cvar_at_alpha_one_is_the_mean(ts):
+    """The whole distribution is the tail. If this fails, the
+    Rockafellar-Uryasev block is wrong."""
+    st, sc = ts["st"], ts["shock"]
+    r = L.risk_model(st, sc, "cvar", alpha=1.0)
+    ev = L.evaluate_capacity(st, sc, r["plan"])
+    assert abs(L.twostage.cvar_of(ev["dist"], 1.0) - ev["mean"]) < 1e-6
+
+
+def test_risk_ordering_holds_for_every_plan(ts):
+    st, sc = ts["st"], ts["shock"]
+    for mode in L.twostage.RISK_MODES:
+        r = L.risk_model(st, sc, mode)
+        ev = L.evaluate_capacity(st, sc, r["plan"])
+        cv = L.twostage.cvar_of(ev["dist"], 0.10)
+        assert ev["mean"] <= cv + 1e-6 <= ev["worst"] + 1e-6, \
+            f"{mode}: mean <= CVaR <= worst is violated"
+
+
+def test_the_reported_mean_is_not_a_property_of_the_plan(ts):
+    """Part 2c's central defect, pinned.
+
+    Minimax constrains only the worst scenario, so recourse in every other
+    scenario is free and the solver returns arbitrary values. Averaging those
+    gave 2245.5 for a plan whose true mean is 1642.2. This asserts BOTH halves:
+    identical plans must re-evaluate identically, and the reported means must
+    disagree -- because if they ever stop disagreeing, the notebook's whole
+    section 6 has become invisible and needs rewriting rather than trusting.
+    """
+    st, sc = ts["st"], ts["shock"]
+    res = {m: L.risk_model(st, sc, m) for m in L.twostage.RISK_MODES}
+    keyed = {}
+    for m, r in res.items():
+        keyed.setdefault(tuple(round(r["plan"][n], 6) for n in st.nodes),
+                         []).append(m)
+    shared = max(keyed.values(), key=len)
+    assert len(shared) > 1, "no two objectives shared a plan on this instance"
+    true = {round(L.evaluate_capacity(st, sc, res[m]["plan"])["mean"], 6)
+            for m in shared}
+    assert len(true) == 1, \
+        "identical plans re-evaluated to different costs, which cannot happen"
+    reported = {round(res[m]["mean"], 6) for m in shared}
+    assert len(reported) > 1, (
+        "the reported means agreed, so Part 2c section 6's defect is not "
+        "reproducible here any more")
+
+
+def test_evaluate_capacity_is_indifferent_to_how_the_plan_was_found(ts):
+    """The same six numbers must score the same way however they arrived."""
+    st, sc = ts["st"], ts["shock"]
+    a = L.risk_model(st, sc, "cvar")["plan"]
+    ev1 = L.evaluate_capacity(st, sc, a)
+    ev2 = L.evaluate_capacity(st, sc, dict(a))
+    assert abs(ev1["mean"] - ev2["mean"]) < 1e-12
+    assert abs(ev1["worst"] - ev2["worst"]) < 1e-12
+
+
+def test_scenario_generators_are_reproducible(ts):
+    """No seed is hidden and the draw order is part of the definition."""
+    st = ts["st"]
+    assert L.demand_scenarios(st, n=8, seed=3) == L.demand_scenarios(st, n=8, seed=3)
+    assert L.shock_scenarios(st, n=8, seed=3) == L.shock_scenarios(st, n=8, seed=3)
+    assert L.demand_scenarios(st, n=8, seed=3) != L.demand_scenarios(st, n=8, seed=4)
+    for _, p, d in L.demand_scenarios(st, n=8, seed=3):
+        assert p == 1 / 8 and set(d) == set(st.regions)
+
+
 def test_every_stochastic_entry_point_accepts_a_mipgap():
     """These functions difference expectations 0.01% apart against each other.
 

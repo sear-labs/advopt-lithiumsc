@@ -16,6 +16,9 @@ import pytest
 from nbclient import NotebookClient
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# kept in step with tools/build_notebooks/build.py
+LESSON_MARK = "THE FUNCTION IS THE LESSON"
 NOTEBOOKS = sorted((ROOT / "notebooks").glob("*.ipynb"))
 
 
@@ -58,6 +61,11 @@ def test_no_function_definitions_before_the_narration(path):
     notebook — that is the shape where a student meets the abstraction before the
     thing it abstracts.
 
+    A cell marked `THE FUNCTION IS THE LESSON` is also exempt, and that marker
+    must state a reason. It covers the case Part 0 already blesses: an iterative
+    algorithm, or machinery whose sameness across call sites is the point, where
+    the narration sits directly above the function rather than after it.
+
     A cell marked `CARRIED OVER` is exempt: it holds material that *another*
     notebook narrates, so the abstraction is not above the narration of the same
     material. 04d carries over 04c's supply chain for exactly this reason. The
@@ -72,7 +80,19 @@ def test_no_function_definitions_before_the_narration(path):
     for i, cell in enumerate(nb.cells):
         if cell.cell_type != "code":
             continue
-        if "CARRIED OVER" in "".join(cell.source):
+        src = "".join(cell.source)
+        if "CARRIED OVER" in src:
+            continue
+        # A function that IS the lesson is exempt on the same terms the builder
+        # audit applies: the marker must carry a stated reason, so the
+        # exemption cannot be taken silently in the shipped artifact either.
+        if LESSON_MARK in src:
+            marker = next(l for l in src.splitlines() if LESSON_MARK in l)
+            assert len(marker.split(LESSON_MARK, 1)[1].strip(": ")) >= 20, (
+                f"{path.name} cell {i}: '{LESSON_MARK}' with no reason after "
+                f"it. State why this function is the lesson rather than an "
+                f"abstraction hiding it."
+            )
             continue
         lines = "".join(cell.source).splitlines()
         for j, line in enumerate(lines):

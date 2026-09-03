@@ -34,6 +34,7 @@ import pandas as pd                                          # noqa: E402
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import lithium as L                                          # noqa: E402
+from lithium import twostage as T2                           # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = ROOT / "results" / "tables"
@@ -737,11 +738,233 @@ def run_02(ctx):
     return dict(three_case=r, by_scenario=detail, lock=lock, rho=rho_tab)
 
 
+# ==========================================================================
+# Parts 2b and 2c share a THIRD instance: a single-period, three-stage,
+# two-region capacity network. Not Parts 1/2's six-site multi-period network,
+# and not the Part 4 chain. See src/lithium/twostage.py.
+
+# ---- knobs, Parts 2b and 2c ----------------------------------------------
+TS_CMIN, TS_CMAX, TS_PEN = 5.0, 70.0, 30.0
+TS_TAU_OWN, TS_TAU_CROSS = 0.3, 1.5
+# 2b: demand only
+TS_SEED_B, TS_NK_B, TS_LO, TS_HI = 11, 24, 0.55, 1.55
+TS_SCALE_N = [24, 50, 100, 200]
+# 2c: demand plus a region-specific cost shock
+TS_SEED_C, TS_NK_C = 7, 40
+TS_LO_C, TS_SPAN_C = 0.6, 0.9
+TS_HIT_PROB, TS_HIT_SIZE, TS_JITTER = 0.15, 2.6, 0.15
+TS_ALPHA, TS_LAM = 0.10, 0.01
+TS_LAMS = [0.0, 0.005, 0.01, 0.05, 0.15, 0.3, 0.4, 0.7, 1.0]
+TS_ALPHAS = [0.05, 0.10, 0.20, 0.35, 0.50, 1.0]
+# 1e-9: Part 2b asserts the L-shaped value reproduces the extensive form to
+# 1e-9, and Part 2c differences plan means that sit 0.06% apart.
+MIPGAP_TS = 1e-9
+
+
+def setup_twostage(source):
+    """The two-stage capacity network's instance and derived sets."""
+    inst = L.load_twostage_instance(source)
+    st = L.build_twostage_structure(inst, cmin=TS_CMIN, cmax=TS_CMAX,
+                                    pen=TS_PEN, tau_own=TS_TAU_OWN,
+                                    tau_cross=TS_TAU_CROSS)
+    print(f"two-stage network: {len(st.nodes)} nodes, {len(st.arcs)} arcs")
+    return dict(inst=inst, st=st)
+
+
+# ==========================================================================
+def run_02b(ctx):
+    """Part 2b - Benders / L-shaped, and what decomposition actually buys."""
+    st = ctx["ts"]["st"]
+    sc = L.demand_scenarios(st, n=TS_NK_B, seed=TS_SEED_B, lo=TS_LO, hi=TS_HI)
+    print(f"\n=== 02b: L-shaped decomposition ({len(sc)} scenarios) ===")
+
+    ef = T2.extensive_form(st, sc, mipgap=MIPGAP_TS)
+    ef.optimize()
+    assert ef.SolCount > 0, "the extensive form found no solution"
+    plan_ef = T2.capacity_plan(ef, st)
+
+    # the optimal plan sits exactly on the yield chain: each stage is sized to
+    # what the stage above can feed it, so anything more could never be used
+    mine = plan_ef["MINE", "R1"]
+    chain = {"MINE": mine, "PROC": mine * ctx["ts"]["inst"].eta["MINE"],
+             "MFG": mine * ctx["ts"]["inst"].eta["MINE"]
+             * ctx["ts"]["inst"].eta["PROC"]}
+    for stg, want in chain.items():
+        assert abs(plan_ef[stg, "R1"] - want) < 1e-6, (
+            f"{stg} capacity is off the yield chain; the plan is not maximal "
+            f"or a flow-balance row is wrong")
+
+    rows = []
+    for multi, label in ((True, "multicut"), (False, "single cut")):
+        r = L.lshaped(st, sc, multicut=multi, max_iter=200, mipgap=MIPGAP_TS)
+        rel = abs(r["value"] - ef.ObjVal) / abs(ef.ObjVal)
+        assert rel < 1e-9, f"{label} did not reproduce the extensive form ({rel:.2e})"
+        assert r["bound"] <= ef.ObjVal + 1e-6, (
+            f"{label}: the final lower bound exceeds the true optimum, so a cut "
+            f"removed it")
+        rows.append(dict(variant=label, iterations=r["iters"],
+                         subsolves=r["subsolves"], value=round(r["value"], 6),
+                         rel_vs_EF=f"{rel:.1e}"))
+    cuts = _show("02b_cut_variants", pd.DataFrame(rows))
+    assert cuts.iterations.iloc[1] > cuts.iterations.iloc[0], \
+        "aggregating the cuts did not cost iterations"
+    print(f"\nboth variants reproduce {ef.ObjVal:.6f}; single cut takes "
+          f"{cuts.iterations.iloc[1] / cuts.iterations.iloc[0]:.2f}x the iterations")
+
+    rows = []
+    for n in TS_SCALE_N:
+        sc_n = L.demand_scenarios(st, n=n, seed=TS_SEED_B, lo=TS_LO, hi=TS_HI)
+        m_n = T2.extensive_form(st, sc_n, mipgap=MIPGAP_TS)
+        t0 = time.time()
+        m_n.optimize()
+        t_ef = time.time() - t0
+        t0 = time.time()
+        r_n = L.lshaped(st, sc_n, max_iter=200, mipgap=MIPGAP_TS)
+        t_ls = time.time() - t0
+        rows.append(dict(n=n, EF_vars=m_n.NumVars, EF_sec=round(t_ef, 2),
+                         LS_sec=round(t_ls, 2), LS_iters=r_n["iters"],
+                         EF_fits_free_licence=m_n.NumVars <= 2000))
+    scale = _show("02b_scaling", pd.DataFrame(rows))
+    assert scale.LS_iters.nunique() == 1, (
+        "the L-shaped iteration count moved with the scenario count; Part 2b's "
+        "central claim is that it does not")
+    print(f"\niterations at every scenario count: {scale.LS_iters.iloc[0]}. "
+          f"The extensive form leaves the free licence behind at n = "
+          f"{scale[~scale.EF_fits_free_licence].n.min()}, and decomposition "
+          f"never builds it.")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    hist = pd.DataFrame(L.lshaped(st, sc, mipgap=MIPGAP_TS)["hist"])
+    ax.plot(hist["iter"], hist["LB"], "o-", color=BLUE, lw=2, label="lower bound")
+    ax.plot(hist["iter"], hist["UB"], "s-", color=RED, lw=2, label="upper bound")
+    ax.axhline(ef.ObjVal, color=GREEN, ls="--", lw=1.5, label="extensive form")
+    ax.set_xlabel("iteration")
+    ax.set_ylabel("objective")
+    ax.set_title("Part 2b: the bounds close on the optimum")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "02b_convergence.png", dpi=150)
+    plt.close(fig)
+    return dict(ef=ef.ObjVal, cuts=cuts, scale=scale)
+
+
+# ==========================================================================
+def run_02c(ctx):
+    """Part 2c - CVaR, and scoring every plan by the same question."""
+    st = ctx["ts"]["st"]
+    sc = L.shock_scenarios(st, n=TS_NK_C, seed=TS_SEED_C, lo=TS_LO_C,
+                           span=TS_SPAN_C, hit_prob=TS_HIT_PROB,
+                           hit_size=TS_HIT_SIZE, steady_jitter=TS_JITTER)
+    print(f"\n=== 02c: risk-averse planning ({len(sc)} scenarios) ===")
+
+    res, ev = {}, {}
+    for mode in T2.RISK_MODES:
+        res[mode] = L.risk_model(st, sc, mode, alpha=TS_ALPHA, lam=TS_LAM,
+                                 mipgap=MIPGAP_TS)
+        ev[mode] = L.evaluate_capacity(st, sc, res[mode]["plan"])
+
+    table = _show("02c_objectives", pd.DataFrame([
+        dict(objective=m,
+             sited=("R1" if res[m]["plan"]["MINE", "R1"] > 1e-6 else "R2"),
+             capex=round(ev[m]["capex"], 1),
+             total_capacity=round(sum(res[m]["plan"].values()), 1),
+             reported_mean=round(res[m]["mean"], 1),
+             true_mean=round(ev[m]["mean"], 1),
+             true_cvar=round(T2.cvar_of(ev[m]["dist"], TS_ALPHA), 1),
+             true_worst=round(ev[m]["worst"], 1))
+        for m in T2.RISK_MODES]))
+
+    for m in T2.RISK_MODES:
+        assert (ev[m]["mean"] <= T2.cvar_of(ev[m]["dist"], TS_ALPHA) + 1e-6
+                <= ev[m]["worst"] + 1e-6), \
+            f"{m}: mean <= CVaR <= worst is violated"
+
+    # the defect this notebook was rebuilt around: several objectives return
+    # ONE plan and report different average costs for it. The re-evaluated
+    # mean is the only one that is a property of the plan.
+    keyed = {}
+    for m in T2.RISK_MODES:
+        keyed.setdefault(tuple(round(res[m]["plan"][n], 6) for n in st.nodes),
+                         []).append(m)
+    shared = max(keyed.values(), key=len)
+    reported = {round(res[m]["mean"], 4) for m in shared}
+    true = {round(ev[m]["mean"], 4) for m in shared}
+    print(f"\n{len(keyed)} distinct plans. {len(shared)} objectives share one: "
+          f"{sorted(shared)}")
+    print(f"  reported means for it : {len(reported)} distinct -> {sorted(reported)}")
+    print(f"  re-evaluated          : {len(true)} distinct -> {sorted(true)}")
+    assert len(true) == 1, \
+        "identical plans re-evaluated to different costs, which cannot happen"
+    assert len(reported) > 1, (
+        "the reported means agree here, so Part 2c's central defect would be "
+        "invisible; check the scenario set before trusting the table")
+    print(f"  the dearest reported is "
+          f"{100 * (max(reported) / min(reported) - 1):.1f}% above the cheapest, "
+          f"for one identical plan")
+
+    rows = []
+    for lam in TS_LAMS:
+        r = L.risk_model(st, sc, "hybrid", alpha=TS_ALPHA, lam=lam,
+                         mipgap=MIPGAP_TS)
+        e = L.evaluate_capacity(st, sc, r["plan"])
+        rows.append(dict(lam=lam,
+                         sited=("R1" if r["plan"]["MINE", "R1"] > 1e-6 else "R2"),
+                         true_mean=round(e["mean"], 1),
+                         true_cvar=round(T2.cvar_of(e["dist"], TS_ALPHA), 1),
+                         true_worst=round(e["worst"], 1)))
+    lam_sweep = _show("02c_lambda_sweep", pd.DataFrame(rows))
+    n_out = lam_sweep[["true_mean", "true_cvar", "true_worst"]].drop_duplicates().shape[0]
+    assert n_out == 2, (
+        f"the lambda sweep produced {n_out} distinct outcomes; Part 2c says the "
+        f"frontier is a two-step staircase")
+
+    rows = []
+    for a in TS_ALPHAS:
+        r = L.risk_model(st, sc, "cvar", alpha=a, mipgap=MIPGAP_TS)
+        e = L.evaluate_capacity(st, sc, r["plan"])
+        rows.append(dict(alpha=a,
+                         sited=("R1" if r["plan"]["MINE", "R1"] > 1e-6 else "R2"),
+                         true_mean=round(e["mean"], 1),
+                         cvar_at_alpha=round(T2.cvar_of(e["dist"], a), 1),
+                         true_worst=round(e["worst"], 1)))
+    a_sweep = _show("02c_alpha_sweep", pd.DataFrame(rows))
+    last = a_sweep.iloc[-1]
+    assert abs(last.cvar_at_alpha - last.true_mean) < 0.05, (
+        "at alpha = 1 CVaR must equal the mean; it does not, so the "
+        "Rockafellar-Uryasev block is wrong")
+    print(f"\nat alpha = 1 CVaR equals the mean ({last.cvar_at_alpha}), which is "
+          f"the free check on the CVaR block")
+
+    n_, h_ = ev["neutral"], ev["hybrid"]
+    assert abs(n_["capex"] - h_["capex"]) < 1e-6, \
+        "the risk-averse plan differs in capex, so it is not a pure relocation"
+    print(f"the hedge: mean {100 * (h_['mean'] / n_['mean'] - 1):+.2f}%, "
+          f"worst {100 * (h_['worst'] / n_['worst'] - 1):+.2f}%, "
+          f"capex unchanged at {n_['capex']:.1f} - relocation, not more capacity")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    for m, col in (("neutral", BLUE), ("hybrid", RED)):
+        ax.plot(range(1, len(sc) + 1), ev[m]["dist"], "o-", ms=3, color=col,
+                label=f"{m} (sited "
+                      f"{'R1' if res[m]['plan']['MINE', 'R1'] > 1e-6 else 'R2'})")
+    ax.set_xlabel("scenario, sorted cheapest to dearest")
+    ax.set_ylabel("total cost")
+    ax.set_title("Part 2c: two plans, scored the same way")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "02c_distributions.png", dpi=150)
+    plt.close(fig)
+    return dict(table=table, lam=lam_sweep, alpha=a_sweep)
+
+
 # Sections are grouped by which setup they need, so `--only 02` never pays for
 # the Part 4 planner calibration and `--only 4c` never loads the network.
 NET_SECTIONS = {"01": run_01, "02": run_02}
+TS_SECTIONS = {"02b": run_02b, "02c": run_02c}
 CHAIN_SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
-SECTIONS = {**NET_SECTIONS, **CHAIN_SECTIONS}
+SECTIONS = {**NET_SECTIONS, **TS_SECTIONS, **CHAIN_SECTIONS}
 
 
 def main() -> None:
@@ -780,6 +1003,8 @@ def main() -> None:
     ctx = {"_net_source": source}
     if any(n in NET_SECTIONS for n in wanted):
         ctx["net"] = setup_network(source, NET_T)
+    if any(n in TS_SECTIONS for n in wanted):
+        ctx["ts"] = setup_twostage(source)
     if any(n in CHAIN_SECTIONS for n in wanted):
         ctx.update(setup(source, max_iter=6 if args.quick else 16))
     for name in wanted:

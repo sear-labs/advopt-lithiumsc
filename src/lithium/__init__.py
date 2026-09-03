@@ -40,6 +40,15 @@ from .stochastic import (eval_strategy_by_scenario, evaluate_stage1,
                          stage1_keys, strategy_stage1, subproblem,
                          three_case_comparison, wait_and_see)
 from .structure import Structure, build_structure
+# `twostage` is imported as a MODULE, not flattened. Its `extensive_form`,
+# `recourse` and `risk_model` act on a different instance from the
+# same-named things in `stochastic` and `core`, and flattening them would
+# shadow one with the other. See twostage.py's docstring.
+from . import twostage
+from .twostage import (TwoStageInstance, TwoStageStructure,
+                       build_twostage_structure, demand_scenarios,
+                       evaluate_capacity, load_twostage_instance, lshaped,
+                       risk_model, shock_scenarios)
 
 __version__ = "0.1.0"
 
@@ -58,6 +67,10 @@ __all__ = [
     "wait_and_see", "mean_value_stage1", "eval_strategy_by_scenario",
     "strategy_stage1", "perfect_info_by_scenario",
     "three_case_comparison", "ph_three_case",
+    "twostage", "TwoStageInstance", "TwoStageStructure",
+    "load_twostage_instance", "build_twostage_structure",
+    "demand_scenarios", "shock_scenarios", "lshaped", "risk_model",
+    "evaluate_capacity",
     "stackelberg", "follower_qp", "follower_marginal_cost", "follower_legacy",
     "tariff_schedule", "quota_schedule", "local_content_schedule", "welfare",
     "inverse_demand", "best_response_cournot", "cournot_iterate",

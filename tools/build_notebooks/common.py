@@ -779,6 +779,160 @@ for r in REGIONS:
     return out
 
 
+def twostage_instance_section(agree=9):
+    """Section 2 for Parts 2b and 2c: the two-stage network's two tables."""
+    out, M, C = _cells()
+
+    M(r"""
+## 2. The instance
+
+**This is a third instance, and confusing it with the other two will waste an
+hour.** Part 1 and Part 2 use a six-site, twenty-year network with vintages,
+lead times and learning. Part 4 uses a two-region chain owned by competing
+firms. This one is single-period: three stages, two regions, six capacity
+nodes, twelve arcs, and no time at all.
+
+It is smaller on purpose. Part 2b needs the **duals** of the capacity rows, and
+for those to exist the second stage has to be a linear program. In Part 1's
+model capacity is entangled with binaries, vintages and lead times, and there is
+no clean dual to build a cut from.
+
+| file | keyed by | rows |
+|---|---|---|
+| `twostage_stages.csv` | `stage` | 3 |
+| `twostage_regions.csv` | `region` | 2 |
+
+`region_cost` is read by both notebooks and used only by Part 2c; Part 2b has no
+regional cost asymmetry. They are different models, not one model with a flag.
+""")
+
+    M(r"""
+Read the two tables and look at them as frames before turning them into anything
+the model indexes.
+""")
+
+    C(r'''
+DATA = Path("data/raw")
+
+if not (DATA / "twostage_stages.csv").exists():
+    print("!" * 78)
+    print("! data/raw/ was not found, so this notebook is FALLING BACK to generated")
+    print("! numbers. Everything below will run and every figure will render, but the")
+    print("! results are NOT the shipped instance and are NOT an acceptable submission.")
+    print("! Fix: clone the repo (see section 0) or run this notebook from the repo root.")
+    print("!" * 78)
+    DATA = Path("_generated_fallback")
+    DATA.mkdir(exist_ok=True)
+    (DATA / "twostage_stages.csv").write_text(
+        "stage,fix,unit,opc,eta\nMINE,240.0,2.2,0.8,0.95\n"
+        "PROC,200.0,2.9,1.3,0.90\nMFG,160.0,3.3,1.6,0.93\n")
+    (DATA / "twostage_regions.csv").write_text(
+        "region,demand_base,region_cost\nR1,34.0,0.72\nR2,22.0,1.00\n")
+
+stages_df = pd.read_csv(DATA / "twostage_stages.csv")
+regions_df = pd.read_csv(DATA / "twostage_regions.csv")
+print(f"twostage_stages.csv : {len(stages_df)} rows x {len(stages_df.columns)} columns")
+print(f"twostage_regions.csv: {len(regions_df)} rows x {len(regions_df.columns)} columns")
+stages_df
+''')
+
+    M(r"""
+A frame shows rows and columns. The model does not index by row number — it
+indexes by `stage` and by `region`. Print the dictionary form so the **key** is
+explicit rather than implied by the layout.
+""")
+
+    C(r'''
+STAGES = tuple(stages_df["stage"])
+REGIONS = tuple(regions_df["region"])
+
+FIX = dict(zip(stages_df["stage"], stages_df["fix"].astype(float)))
+UNIT = dict(zip(stages_df["stage"], stages_df["unit"].astype(float)))
+OPC = dict(zip(stages_df["stage"], stages_df["opc"].astype(float)))
+ETA = dict(zip(stages_df["stage"], stages_df["eta"].astype(float)))
+DEMAND_BASE = dict(zip(regions_df["region"], regions_df["demand_base"].astype(float)))
+REGION_COST = dict(zip(regions_df["region"], regions_df["region_cost"].astype(float)))
+
+print(f"STAGES  {STAGES}")
+print(f"REGIONS {REGIONS}")
+for name, d in (("FIX", FIX), ("UNIT", UNIT), ("OPC", OPC), ("ETA", ETA)):
+    print(f"{name:12s} {d}")
+print(f"{'DEMAND_BASE':12s} {DEMAND_BASE}")
+print(f"{'REGION_COST':12s} {REGION_COST}   (Part 2c only)")
+
+# Try it: give R2 the cheaper operating costs instead and watch section @AGREE@
+# stay green, because the package is handed this table rather than re-reading it.
+# REGION_COST["R1"], REGION_COST["R2"] = 1.00, 0.72
+''')
+    return [(k, _sub(t, agree=agree)) for k, t in out]
+
+
+def twostage_structure_section(agree=9):
+    """Section 3 for Parts 2b and 2c: the knobs, and the sets derived from them."""
+    out, M, C = _cells()
+
+    M(r"""
+## 3. The knobs, and the sets derived from them
+
+Everything in this section is either a **knob** — a scalar carrying a concept,
+written out here where the sentence explaining it is — or **arithmetic** on the
+tables above. Nothing here is data.
+
+The four knobs:
+
+- `CMIN`, `CMAX` — a node that opens at all must be at least `CMIN` and at most
+  `CMAX`. Together with the binary `y` this is what makes stage 1 a *discrete*
+  decision rather than a continuous one, and therefore what makes the master
+  problem in Part 2b a MILP.
+- `PEN` — the penalty per unit of unmet demand. It has to exceed the cost of
+  serving that demand the expensive way, or the model will simply decline to
+  serve it.
+- `TAU_OWN`, `TAU_CROSS` — transport within a region and across regions.
+""")
+
+    C(r'''
+CMIN, CMAX = 5.0, 70.0        # a node that opens is between these
+PEN = 30.0                    # per unit of unmet demand
+TAU_OWN, TAU_CROSS = 0.3, 1.5   # transport within / across regions
+
+NODES = [(s, r) for s in STAGES for r in REGIONS]
+ARCS = [(s, a, b) for s in STAGES for a in REGIONS for b in REGIONS]
+TAU = {(a, b): (TAU_OWN if a == b else TAU_CROSS)
+       for a in REGIONS for b in REGIONS}
+
+print(f"{len(NODES)} capacity nodes, {len(ARCS)} arcs")
+print(f"nodes: {NODES}")
+print(f"TAU  : {TAU}")
+print(f"\ncrossing a region costs {TAU_CROSS / TAU_OWN:.0f}x what staying home does,")
+print(f"and PEN = {PEN} is {PEN / max(OPC.values()):.0f}x the dearest stage's opex,")
+print("so unmet demand is a last resort rather than a cheap way out.")
+''')
+
+    M(r"""
+### 3.1 What a plan can physically deliver
+
+Yields compound down the chain, so a MINE node of capacity $c$ can support at
+most $\eta_{\text{MINE}} c$ of processing and $\eta_{\text{MINE}}
+\eta_{\text{PROC}} c$ of manufacturing. That product is worth computing now,
+because it turns up as the answer later: the optimal plans in both notebooks sit
+exactly on this chain rather than anywhere in between.
+""")
+
+    C(r'''
+chain = 1.0
+for s in STAGES:
+    chain *= ETA[s]
+    print(f"a unit of MINE capacity supports {chain:.4f} through {s}")
+
+MAX_DELIVERABLE = CMAX * ETA[STAGES[0]] * ETA[STAGES[1]]
+print(f"\none full-size chain ({CMAX:.0f} at each stage, sized down the yields):")
+print(f"  {CMAX:.2f} -> {CMAX * ETA[STAGES[0]]:.2f} -> {MAX_DELIVERABLE:.4f}")
+print(f"total peak demand across regions can reach "
+      f"{sum(DEMAND_BASE.values()) * 1.55:.1f}, so one chain is not obviously enough")
+''')
+    return [(k, _sub(t, agree=agree)) for k, t in out]
+
+
 def network_instance_section(agree=13):
     """Section 2 for Parts 1 and 2: the six-site network's three tables."""
     out, M, C = _cells()

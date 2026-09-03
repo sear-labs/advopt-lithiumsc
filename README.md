@@ -43,6 +43,8 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 |---|---|---|
 | `notebooks/01_deterministic.ipynb` | The deterministic network MILP, and four modelling choices that move the answer more than the data does: capex timing, investment granularity, learning, foresight | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/01_deterministic.ipynb) |
 | `notebooks/02_stochastic.ipynb` | Two-stage stochastic programming: nonanticipativity, EVPI and VSS, and why VSS measures how much you commit rather than how uncertain you are; progressive hedging and its rho trap | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02_stochastic.ipynb) |
+| `notebooks/02b_benders.ipynb` | Benders / L-shaped decomposition: cuts from recourse duals, multicut against single cut, and what decomposition actually buys (it is not speed) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02b_benders.ipynb) |
+| `notebooks/02c_cvar.ipynb` | CVaR, minimax and a hybrid; why a solution vector is not a set of results, and how one plan reported three different average costs | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02c_cvar.ipynb) |
 | `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
 | `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
@@ -87,6 +89,8 @@ src/lithium/              the streamlined track
 notebooks/                the teaching track
   01_deterministic.ipynb    the network MILP, and four choices that move the answer
   02_stochastic.ipynb       the extensive form and progressive hedging, by hand
+  02b_benders.ipynb         L-shaped by hand; cuts built from recourse duals
+  02c_cvar.ipynb            CVaR by hand; scoring every plan the same way
   04ab_planner_and_game.ipynb  the planner and the first game, built by hand
   04c_cournot.ipynb         built by hand, narrated, ends in the agreement assertion
   04c_exact_miqp.ipynb      the exact MIQP; SMALL=True fits the free licence

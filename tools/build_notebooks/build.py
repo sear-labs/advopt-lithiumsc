@@ -42,6 +42,8 @@ LESSON_MARK = "THE FUNCTION IS THE LESSON"
 BUILDERS = {
     "01": "build_notebooks.nb_01",
     "02": "build_notebooks.nb_02",
+    "02b": "build_notebooks.nb_02b",
+    "02c": "build_notebooks.nb_02c",
     "04ab": "build_notebooks.nb_04ab",
     "04c": "build_notebooks.nb_04c",
     "04c_exact": "build_notebooks.nb_04c_exact",
