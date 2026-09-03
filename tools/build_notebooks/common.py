@@ -46,7 +46,8 @@ def _sub(text, **numbers):
     for name, value in numbers.items():
         text = text.replace(f"@{name.upper()}@", str(value))
     left = [m for m in ("@AGREE@", "@CHAIN@", "@REVENUE@", "@TIERS@", "@TIERED@",
-                       "@BLOCKS@", "@HORIZON_NOTE@", "@MODEL@")
+                       "@BLOCKS@", "@HORIZON_NOTE@", "@MODEL@",
+                       "@HORIZON@", "@YEAR_GRID@")
             if m in text]
     if left:
         raise ValueError(f"unfilled section placeholders {left} in a shared cell")
@@ -950,9 +951,14 @@ print(f"CAPEX0['P1'] = {CAPEX0['P1']:.0f}, CAPEX0['P2'] = {CAPEX0['P2']:.0f}"
     return [(k, _sub(t, agree=agree)) for k, t in out]
 
 
-def network_structure_section(agree=13, model=6):
+def network_structure_section(agree=13, model=6, horizon=20):
     """Section 3 for Parts 1 and 2: everything derived from the tables and knobs."""
     out, M, C = _cells()
+    # Five sample years spanning the horizon, for the display tables. At the
+    # default T=20 this is exactly (1, 5, 10, 15, 20) -- the literal it replaced.
+    grid = [1] + [round(horizon * k / 4) for k in (1, 2, 3, 4)]
+    year_grid = "(" + ", ".join(str(y) for y in grid) + ")"
+    assert horizon != 20 or year_grid == "(1, 5, 10, 15, 20)"
 
     M(r"""
 ## 3. The knobs, and the structure derived from them
@@ -971,7 +977,7 @@ is what proves the two derivations agree.
 """)
 
     C(r'''
-T = 20        # horizon, years
+T = @HORIZON@        # horizon, years
 r = 0.05      # discount rate
 LIFE = 20     # asset life, years
 MAX_BUILDS = 3   # units that may be built at one site in one decision year
@@ -1028,10 +1034,10 @@ assert all(ETA["P", 10, t] >= ETA["P", 2, t] for t in YEARS if t >= 10), \
 
 print(f"{len(ETA)} yields, keyed (tier, vintage, year)\n")
 print(f"processing yield, by vintage and year:")
-print(f"{'vintage':>8s} " + "".join(f"{'yr ' + str(t):>9s}" for t in (1, 5, 10, 15, 20)))
+print(f"{'vintage':>8s} " + "".join(f"{'yr ' + str(t):>9s}" for t in @YEAR_GRID@))
 for v in (-3, 1, 5, 10, 15):
     print(f"{v:8d} " + "".join(f"{ETA['P', v, t]:9.4f}" if t >= max(v, 1) else f"{'-':>9s}"
-                               for t in (1, 5, 10, 15, 20)))
+                               for t in @YEAR_GRID@))
 ''')
 
     M(r"""
@@ -1054,7 +1060,7 @@ TC_DEM = {(f, g): (TRANSPORT_OWN if HOME[f] == g else TRANSPORT_CROSS)
           for f in FABS for g in REGIONS}
 
 print(f"{'year':>5s} " + "".join(f"{g:>10s}" for g in REGIONS))
-for t in (1, 5, 10, 15, 20):
+for t in @YEAR_GRID@:
     print(f"{t:5d} " + "".join(f"{D[g, t]:10.2f}" for g in REGIONS))
 cross = [t for t in YEARS if D[REGIONS[1], t] > D[REGIONS[0], t]]
 print(f"\n{REGIONS[1]} overtakes {REGIONS[0]} in year {min(cross)}"
@@ -1092,4 +1098,6 @@ print(f"learning rate {100 * LR:.0f}% per doubling, floored at "
       f"{100 * C_FLOOR_FRAC:.0f}% of the starting cost")
 ''')
 
-    return [(k, _sub(t, agree=agree, model=model)) for k, t in out]
+    return [(k, _sub(t, agree=agree, model=model, horizon=horizon,
+                     year_grid=year_grid))
+            for k, t in out]

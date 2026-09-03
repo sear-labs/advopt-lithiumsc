@@ -1,9 +1,28 @@
 {
-  "_comment": "Adjudicated counts from tools/prosecheck.py. A number here is a figure a human has checked and accepted; the gate is that the count must not RISE. Raise an entry only with a note below saying which reading was accepted and why.",
+  "01_deterministic.ipynb": 3,
+  "02_stochastic.ipynb": 6,
+  "04ab_planner_and_game.ipynb": 2,
+  "04c_cournot.ipynb": 5,
+  "04c_exact_miqp.ipynb": 11,
+  "04d_stackelberg.ipynb": 3,
+  "04e_policy.ipynb": 2,
+  "_01_deterministic": [
+    "2 x the -9 in $10^{-9}$",
+    "46,353.6 - the annual-mesh figure at the OLD 0.005 MIP gap, recorded in section 12.1 to show why the gap was tightened. By design it no longer reproduces."
+  ],
+  "_02_stochastic": 6,
+  "_04ab_planner_and_game": [
+    "2 x the -9 in $10^{-9}$ (an exponent, not a result)"
+  ],
   "_04c_cournot": [
     "2 x the -9 in $10^{-9}$ (an exponent, not a result)",
     "7,612.7 and 5,895.7 - Part 4b's own figures, re-executed 2026-09-03, attributed in the prose as belonging to that notebook",
     "-3,257.565407376 - the recorded output of the deliberate constraint break in section 12.1, which by design does not reproduce in a green run"
+  ],
+  "_04c_exact_miqp": [
+    "2,000 - the free licence's LINEAR variable cap, a documented constant",
+    "37 - the horizon of the SMALL=False configuration, which the shipped run does not use",
+    "9 figures in the section 12 table and prose - from a recorded SMALL=False run on an academic licence (2026-09-03). By design they do not reproduce at the shipped default."
   ],
   "_04d_stackelberg": [
     "2 x the -9 in $10^{-9}$",
@@ -12,22 +31,6 @@
   "_04e_policy": [
     "2 x the -9 in $10^{-9}$"
   ],
-  "_04ab_planner_and_game": [
-    "2 x the -9 in $10^{-9}$ (an exponent, not a result)"
-  ],
-  "_04c_exact_miqp": [
-    "2,000 - the free licence's LINEAR variable cap, a documented constant",
-    "37 - the horizon of the SMALL=False configuration, which the shipped run does not use",
-    "9 figures in the section 12 table and prose - from a recorded SMALL=False run on an academic licence (2026-09-03). By design they do not reproduce at the shipped default."
-  ],
-  "_01_deterministic": [
-    "2 x the -9 in $10^{-9}$",
-    "46,353.6 - the annual-mesh figure at the OLD 0.005 MIP gap, recorded in section 12.1 to show why the gap was tightened. By design it no longer reproduces."
-  ],
-  "04c_cournot.ipynb": 5,
-  "04d_stackelberg.ipynb": 3,
-  "04e_policy.ipynb": 2,
-  "04ab_planner_and_game.ipynb": 2,
-  "04c_exact_miqp.ipynb": 11,
-  "01_deterministic.ipynb": 3
+  "_comment": "Adjudicated counts from tools/prosecheck.py. A number here is a figure a human has checked and accepted; the gate is that the count must not RISE. Raise an entry only with a note below saying which reading was accepted and why.",
+  "_note_02_stochastic": "Adjudicated 2026-09-03, all six accepted as legitimate: the exponent in $10^{-9}$; the citation years 2016 and 2018 (Gade et al., Boland et al.); 20,000 and 1,000,000, which are the scenario counts the CITED source work tests block asynchrony at, not results of this notebook; and 350 from the suggested RHO_SWEEP in Things to try. One flag was a real defect and was FIXED rather than baselined: the prose said 31 units out of 25,700, a rounding, where the run gives 25,682.5."
 }

@@ -1155,6 +1155,46 @@ print("\nevery derivation agrees, not just the optimum")
 ''')
 
     M(r"""
+### 12.4 And the rolling horizon, which a cost comparison would not have caught
+
+Everything above compares a **cost**. Section 8's rolling horizon returns a
+**committed plan**, assembled one window at a time, and that is a different kind
+of thing to check: each window commits discrete builds, so a disagreement does
+not shift the answer slightly — it commits a different plan, and the difference
+compounds across every window that follows.
+
+It is also the one part of this notebook the cell above could not see, and it
+drifted. `lithium.core.rolling_horizon` had no `mipgap` argument, so it solved
+every window at the package default of 0.005 while `rolling()` here uses
+`MIPGAP` = 0.001. At W=3 that commits **5 units instead of 4** and reports
++73.5% against perfect foresight instead of +74.6% — a number that appears in
+this notebook's prose.
+
+**The lesson is about what an assertion covers, not about a MIP gap.** A check on
+one number is a check on one code path. The paths it does not touch are exactly
+where a second copy is free to drift, and the drift is invisible precisely
+because everything that *is* checked still passes.
+""")
+
+    C(r'''
+from lithium import rolling_horizon as pkg_rolling
+from lithium import evaluate_plan as pkg_evaluate_plan
+
+print(f"{'W':>3s} {'notebook':>12s} {'package':>12s} {'units':>7s}  plans match?")
+for W in (3, 4, 5, 8, 20):
+    nb_plan, _ = rolling(W=W, delta=3, invest_step=3)
+    pk_plan, _ = pkg_rolling(nb_struct, W=W, delta=3, invest_step=3,
+                             mipgap=MIPGAP)
+    nb_c = cost_of(nb_plan)
+    pk_c = pkg_evaluate_plan(nb_struct, pk_plan, mipgap=MIPGAP)
+    same = nb_plan == pk_plan
+    print(f"{W:3d} {nb_c:12,.1f} {pk_c:12,.1f} {sum(nb_plan.values()):7d}  {same}")
+    assert same, f"W={W}: the committed plans differ, not merely their cost"
+    assert abs(nb_c - pk_c) / abs(nb_c) < 1e-9, f"W={W}: costs differ"
+print("\nthe rolling horizon agrees on the PLAN, not merely on the cost")
+''')
+
+    M(r"""
 ## 13. Summary
 
 | Question | Answer |

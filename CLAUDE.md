@@ -652,3 +652,14 @@ notebook, the target shape is Part 0's.
   converged answer is stable. Apply Part 6's second fix: assert the invariants,
   teach the degeneracy.
 - Seeds are set only in Parts 2b and 2c.
+- **`tools/prosecheck.py` barely checks percentages.** Its tolerance has a flat
+  0.06 absolute floor applied to the `val / 100` candidate too, where 0.06 means
+  six percentage points, so a prose percentage matches almost any printed
+  decimal in 0.6-0.8. Verified 2026-09-03 by planting a stale `+73.5%`, which
+  passed. Tightening it raises the repo-wide flag count from 32 to 92 (scaled
+  floor) or 117 (precision-aware), and most of that increase is *derived*
+  percentages -- prose quoting a ratio of two printed numbers that is never
+  itself printed. The real fix is to give the checker derived candidates
+  (pairwise ratios and percentage changes) and then adjudicate the remainder.
+  Until that lands, a clean prosecheck means the absolute figures are verified
+  and the percentages are not.

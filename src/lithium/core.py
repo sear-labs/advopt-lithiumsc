@@ -410,14 +410,14 @@ def solve(st: CoreStructure, tag: str, **kw) -> dict:
 
 
 def evaluate_plan(st: CoreStructure, plan: dict, capex_mode="annualized",
-                  learning="none"):
+                  learning="none", mipgap: float | None = None):
     """Cost of a FIXED build plan under the full-horizon model, ops re-optimised.
 
     `build` charges nothing for prebuilt capacity, so the plan's own capex has to
     be added back here. Forgetting that would make any plan look free.
     """
     m = build(st, invest_years=[], capex_mode=capex_mode, learning=learning,
-              fixed_builds=plan)
+              fixed_builds=plan, mipgap=mipgap)
     d, LS = st.inst, set(st.learn_sites)
     tech_rate = (sum(d.capex0[x] * st.learn_frac / d.cap_unit[x] for x in LS)
                  / len(LS))
@@ -435,7 +435,8 @@ def evaluate_plan(st: CoreStructure, plan: dict, capex_mode="annualized",
 
 def rolling_horizon(st: CoreStructure, W: int, delta: int, invest_step: int = 1,
                     decision_zone: int | None = None, tail_continuous: bool = True,
-                    capex_mode: str = "annualized"):
+                    capex_mode: str = "annualized",
+                    mipgap: float | None = None):
     """Re-solve on a moving window, committing `delta` years at a time.
 
     W               : foresight window length
@@ -445,6 +446,12 @@ def rolling_horizon(st: CoreStructure, W: int, delta: int, invest_step: int = 1,
     tail_continuous : builds beyond the decision zone are continuous rather than
                       banned. Banning them is an artefact generator - Part 1
                       section 7 measures what it costs.
+    mipgap          : passed to every window solve. It MUST be the gap the
+                      caller compares the result against: each window commits a
+                      discrete plan, so a looser gap does not shift the answer
+                      slightly, it commits a different plan and the error
+                      compounds across windows. At 0.005 rather than the
+                      notebook's 0.001, W=3 commits 5 units instead of 4.
 
     Returns ``(committed plan, log)``.
     """
@@ -455,7 +462,7 @@ def rolling_horizon(st: CoreStructure, W: int, delta: int, invest_step: int = 1,
                   else min(start + decision_zone - 1, y_end))
         iy = [v for v in range(start, y_end + 1) if (v - 1) % invest_step == 0]
         kw = dict(invest_years=iy, capex_mode=capex_mode, y_start=start,
-                  y_end=y_end, fixed_builds=dict(committed))
+                  y_end=y_end, fixed_builds=dict(committed), mipgap=mipgap)
         if tail_continuous:
             kw["relax_int_after"] = dz_end
         else:

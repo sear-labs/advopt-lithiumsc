@@ -2,6 +2,7 @@
 """One command reproduces every migrated result in this repo.
 
     python scripts/run_all.py
+    python scripts/run_all.py --only 02
     python scripts/run_all.py --only 4d,4e
     python scripts/run_all.py --quick        # fewer best-response rounds
 
@@ -481,7 +482,266 @@ def run_4e(ctx):
     return dict(tariffs=tariffs, quotas=quotas, lcr=lcr, deterrence=deter)
 
 
-SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
+# ==========================================================================
+# Parts 1 and 2 use a DIFFERENT instance from the Part 4 family: a six-site
+# network with arc flows and a single planner, not a two-region vertically
+# integrated chain. So they carry their own knobs and their own setup, and
+# `--only 02` never pays for the Part 4 planner calibration.
+
+# ---- knobs, Parts 1 and 2 ------------------------------------------------
+NET_T, NET_R, NET_LIFE, NET_MAX_BUILDS = 20, 0.05, 20, 3
+NET_ETA_MINE, NET_ETA_MIN = 0.90, 0.60
+NET_TRANSPORT_OWN, NET_TRANSPORT_CROSS, NET_SLACK_PEN = 0.4, 1.6, 45.0
+NET_LEARN_FRAC, NET_LR, NET_Q0, NET_C_FLOOR_FRAC, NET_G_EXOG = 0.70, 0.20, 380.0, 0.55, 0.035
+NET_INVEST_STEP = 3
+# Part 1
+GRANULARITIES = {"annual": 1, "triennial": 3, "quinquennial": 5}
+# The windows 01_deterministic section 8 sweeps, and its delta. A rolling
+# policy that commits 1 year at a time is a DIFFERENT policy from one that
+# commits 3, and gives a different answer (+73.5% vs the notebook's +74.6%
+# at W=3). These must match the notebook or the two halves of the repo are
+# answering different questions - CLAUDE.md Part 6.
+ROLLING_W = [3, 4, 5, 6, 8, 10, 20]
+ROLLING_DELTA = 3
+# 1e-3, not the 0.005 default: section (b) asserts that no coarser mesh beats
+# the annual one, and at 0.005 the reported objectives overlap by more than the
+# quantity being compared.
+MIPGAP_NET = 1e-3
+# Part 2 - a shorter horizon, so the extensive form fits the free licence
+STO_T, STO_INVEST_YEARS, STO_STAGE1 = 12, [1, 4, 7, 10], [1]
+STO_GROWTHS = [(0.010, 0.30), (0.070, 0.40), (0.140, 0.30)]
+STO_R2_BASE = 105.0
+STO_RHOS, STO_PH_ITERS = [30, 100, 300, 1000, 3000], 40
+STO_BLOCK_FRACS = [1.0, 0.67, 0.34]
+STO_STAGE1_SETS = [[1], [1, 4], [1, 4, 7], [1, 4, 7, 10]]
+# 1e-6: the sections below difference expectations that sit within 0.02% of
+# each other, and a looser gap swamps the quantity being measured. It is also
+# what makes RP evaluated equal the extensive form's own objective.
+MIPGAP_STO = 1e-6
+
+
+def setup_network(source, T):
+    """The six-site network instance and the structure derived from it."""
+    inst = L.load_network_instance(source)
+    st = L.build_core_structure(
+        inst, T=T, r=NET_R, life=NET_LIFE, max_builds=NET_MAX_BUILDS,
+        eta_mine=NET_ETA_MINE, eta_min=NET_ETA_MIN,
+        transport_own=NET_TRANSPORT_OWN, transport_cross=NET_TRANSPORT_CROSS,
+        slack_pen=NET_SLACK_PEN, learn_frac=NET_LEARN_FRAC, lr=NET_LR,
+        q0=NET_Q0, c_floor_frac=NET_C_FLOOR_FRAC, g_exog=NET_G_EXOG)
+    n_sites = len(inst.mines) + len(inst.procs) + len(inst.fabs)
+    print(f"network: {n_sites} sites, {T}-year horizon")
+    return dict(inst=inst, st=st, T=T)
+
+
+# ==========================================================================
+def run_01(ctx):
+    """Part 1 - four modelling choices that move the answer more than data does."""
+    st = ctx["net"]["st"]
+    IY = list(range(1, NET_T + 1, NET_INVEST_STEP))
+    print("\n=== 01: capex timing, granularity, learning, foresight ===")
+
+    # (a) capex timing. Lump-sum charges the whole cheque in the build year.
+    rows = []
+    for mode in ("annualized", "lumpsum"):
+        r = L.solve(st, mode, invest_years=IY, capex_mode=mode, mipgap=MIPGAP_NET)
+        assert r["obj"] is not None, f"capex mode {mode} found no solution"
+        rows.append(dict(capex_mode=mode, objective=round(r["obj"], 1),
+                         builds=sum(r["plan"].values()),
+                         unmet=round(r["slack"], 2), seconds=round(r["sec"], 1)))
+    capex = _show("01_capex_timing", pd.DataFrame(rows))
+    ann, lump = capex.iloc[0], capex.iloc[1]
+    print(f"lump-sum costs {100 * (lump.objective / ann.objective - 1):+.1f}% and "
+          f"leaves {lump.unmet / max(ann.unmet, 1e-9):.1f}x the unmet demand")
+
+    # (b) investment granularity. A coarser mesh is a RESTRICTION of the annual
+    #     one, so it cannot do better - that is the assertion, not a hope.
+    meshes = {k: list(range(1, NET_T + 1, s)) for k, s in GRANULARITIES.items()}
+    meshes["staggered"] = L.staggered_years(NET_T)
+    rows = []
+    for name, iy in meshes.items():
+        r = L.solve(st, name, invest_years=iy, mipgap=MIPGAP_NET)
+        assert r["obj"] is not None, f"granularity {name} found no solution"
+        rows.append(dict(mesh=name, decision_years=len(iy),
+                         objective=round(r["obj"], 1), binaries=r["nbin"],
+                         seconds=round(r["sec"], 1)))
+    gran = _show("01_granularity", pd.DataFrame(rows))
+    fine = gran.loc[gran.mesh == "annual", "objective"].iloc[0]
+    assert (gran.objective >= fine - 1e-6).all(), (
+        "a coarser mesh beat the annual one; a mesh is a restriction of it, so "
+        "this is a bug rather than a finding")
+    print(f"the annual mesh is the bound at {fine:,.1f}")
+
+    # (c) learning: cheaper capacity later, so does it change WHEN you build?
+    rows = []
+    for learning in ("none", "capacity"):
+        r = L.solve(st, learning, invest_years=IY, learning=learning,
+                    mipgap=MIPGAP_NET)
+        assert r["obj"] is not None, f"learning {learning} found no solution"
+        rows.append(dict(learning=learning, objective=round(r["obj"], 1),
+                         builds=sum(r["plan"].values()),
+                         early_builds=sum(n for (_, v), n in r["plan"].items()
+                                          if v <= 4)))
+    _show("01_learning", pd.DataFrame(rows))
+
+    # (d) foresight: a rolling horizon sees W years at a time, not all T
+    full = L.solve(st, "full", invest_years=IY, mipgap=MIPGAP_NET)
+    rows = [dict(foresight="perfect", W=NET_T, objective=round(full["obj"], 1),
+                 vs_perfect_pct=0.0)]
+    for W in ROLLING_W:
+        # rolling_horizon returns the COMMITTED plan, not a cost: the myopic run
+        # never solved the full horizon. Scoring it on the full-horizon model is
+        # what makes it comparable to `full` - CLAUDE.md Part 6, match the
+        # comparison before interpreting the difference.
+        plan, _log = L.rolling_horizon(st, W=W, delta=ROLLING_DELTA,
+                                       invest_step=NET_INVEST_STEP,
+                                       mipgap=MIPGAP_NET)
+        obj = L.evaluate_plan(st, plan, mipgap=MIPGAP_NET)
+        assert obj is not None, f"the W={W} rolling plan is infeasible over T"
+        rows.append(dict(foresight=f"rolling W={W}", W=W,
+                         objective=round(obj, 1), units_built=sum(plan.values()),
+                         vs_perfect_pct=round(100 * (obj / full["obj"] - 1), 2)))
+    fore = _show("01_foresight", pd.DataFrame(rows))
+    assert (fore.vs_perfect_pct >= -1e-6).all(), \
+        "limited foresight beat perfect foresight, which is impossible"
+    w3 = fore.loc[fore.foresight == "rolling W=3"].iloc[0]
+    w20 = fore.loc[fore.foresight == "rolling W=20"].iloc[0]
+    assert w3.vs_perfect_pct > 10, \
+        "W=3 was expected to be far off; the hard-floor claim needs re-checking"
+    assert w20.vs_perfect_pct < 0.1, \
+        "a window as long as the horizon must reproduce perfect foresight"
+    print(f"myopia is the most expensive choice here: W=3 costs "
+          f"{w3.vs_perfect_pct:+.1f}% and builds only {w3.units_built} units; "
+          f"W>=5 is within "
+          f"{fore[fore.W >= 5].vs_perfect_pct.max():.2f}%")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    ax.bar(fore.foresight, fore.vs_perfect_pct,
+           color=[BLUE] + [RED] * len(ROLLING_W))
+    ax.tick_params(axis="x", rotation=45)
+    ax.set_ylabel("cost above perfect foresight (%)")
+    ax.set_title("Part 1: what limited foresight costs")
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "01_foresight.png", dpi=150)
+    plt.close(fig)
+    return dict(capex=capex, granularity=gran, foresight=fore)
+
+
+# ==========================================================================
+def run_02(ctx):
+    """Part 2 - the extensive form, EVPI and VSS, and progressive hedging."""
+    st = setup_network(ctx["_net_source"], STO_T)["st"]
+    sc = L.scenarios(st, growths=tuple(STO_GROWTHS), r2_base=STO_R2_BASE)
+    IY, S1 = STO_INVEST_YEARS, STO_STAGE1
+    print(f"\n=== 02: two-stage stochastic programming "
+          f"({len(sc)} scenarios, T={STO_T}) ===")
+
+    # (a) the three strategies, all measured by identical machinery
+    r = L.three_case_comparison(st, sc, IY, S1, mipgap=MIPGAP_STO)
+    WS, RP, EEV = r["WS"], r["RP"], r["EEV"]
+    assert abs(RP - r["ef_obj"]) / abs(RP) < 1e-6, (
+        f"RP evaluated ({RP:.6f}) != the extensive form objective "
+        f"({r['ef_obj']:.6f}); the two paths measure different things")
+    assert WS <= RP + 1e-6, "wait-and-see is not a lower bound"
+    assert RP <= EEV + 1e-6, "the mean-value plan beat the stochastic plan"
+    detail = _show("02_by_scenario", pd.DataFrame([
+        dict(scenario=pi["scenario"], prob=pi["prob"],
+             PI_cost=round(pi["cost"], 1), SP_cost=round(sp["cost"], 1),
+             EV_cost=round(ev["cost"], 1), PI_unmet=round(pi["unmet"], 2),
+             SP_unmet=round(sp["unmet"], 2), EV_unmet=round(ev["unmet"], 2))
+        for pi, sp, ev in zip(r["per"]["PI"], r["per"]["SP"], r["per"]["EV"])]))
+    print(f"\nWS {WS:,.2f}   RP {RP:,.2f} = ef.ObjVal {r['ef_obj']:,.2f}"
+          f"   EEV {EEV:,.2f}")
+    print(f"EVPI {RP - WS:,.2f} ({100 * (RP - WS) / RP:.3f}%)   "
+          f"VSS {EEV - RP:,.2f} ({100 * (EEV - RP) / RP:.3f}%)")
+
+    # (b) VSS against how much is locked in - the finding Part 2 is built on
+    rows = []
+    for s1 in STO_STAGE1_SETS:
+        rr = L.three_case_comparison(st, sc, IY, s1, mipgap=MIPGAP_STO)
+        rows.append(dict(stage1_years=str(s1), WS=round(rr["WS"], 1),
+                         RP=round(rr["RP"], 1), EEV=round(rr["EEV"], 1),
+                         VSS=round(rr["EEV"] - rr["RP"], 2),
+                         VSS_pct=round(100 * (rr["EEV"] - rr["RP"]) / rr["RP"], 3),
+                         hi_unmet_SP=round(rr["per"]["SP"][-1]["unmet"], 1),
+                         hi_unmet_EV=round(rr["per"]["EV"][-1]["unmet"], 1)))
+    lock = _show("02_vss_by_commitment", pd.DataFrame(rows))
+    assert lock.WS.nunique() == 1, (
+        "WS moved with the stage-1 set; wait-and-see never sees a "
+        "nonanticipativity constraint, so this is a plumbing bug")
+    assert lock.VSS_pct.max() > 10 * lock.VSS_pct.iloc[0], \
+        "locking more in barely moved VSS; Part 2's explanation would be wrong"
+    print(f"\nVSS {lock.VSS_pct.iloc[0]:.3f}% -> {lock.VSS_pct.max():.3f}% as the "
+          f"commitment lengthens: VSS measures how much you commit, not only "
+          f"how uncertain you are")
+
+    # (c) progressive hedging, and the rho trap
+    rows = []
+    for rho in STO_RHOS:
+        t0 = time.time()
+        ph = L.progressive_hedging(st, sc, IY, S1, rho=rho, iters=STO_PH_ITERS,
+                                   mipgap=MIPGAP_STO)
+        cost = L.evaluate_stage1(st, sc, IY, S1, ph["z"], mipgap=MIPGAP_STO)
+        rows.append(dict(rho=rho, iterations=ph["iters"],
+                         final_residual=round(ph["resid"][-1], 5),
+                         evaluated_cost=round(cost, 1),
+                         vs_RP_pct=round(100 * (cost / RP - 1), 3),
+                         seconds=round(time.time() - t0, 1)))
+    rho_tab = _show("02_ph_rho_sweep", pd.DataFrame(rows))
+    ibest = rho_tab.vs_RP_pct.idxmin()
+    assert 0 < ibest < len(rho_tab) - 1, (
+        f"the best rho sat at an end of the range ({rho_tab.rho[ibest]}); the "
+        f"point is that it is interior, which is why a sweep is unavoidable")
+    snap = rho_tab.loc[rho_tab.final_residual.idxmin()]
+    print(f"\nbest rho={rho_tab.rho[ibest]} at {rho_tab.vs_RP_pct[ibest]:+.3f}%, "
+          f"interior. rho={snap.rho} agrees perfectly after {snap.iterations} "
+          f"iterations and lands {snap.vs_RP_pct:+.3f}% off: a converged "
+          f"residual is not a quality guarantee")
+
+    # (d) block-asynchronous: fewer subproblem solves, same answer
+    rows = []
+    for bf in STO_BLOCK_FRACS:
+        ph = L.progressive_hedging(st, sc, IY, S1, rho=300, iters=20,
+                                   block_frac=bf, mipgap=MIPGAP_STO)
+        cost = L.evaluate_stage1(st, sc, IY, S1, ph["z"], mipgap=MIPGAP_STO)
+        rows.append(dict(block_frac=bf, subproblem_solves=ph["subsolves"],
+                         final_residual=round(ph["resid"][-1], 5),
+                         evaluated_cost=round(cost, 1),
+                         vs_RP_pct=round(100 * (cost / RP - 1), 4)))
+    block = _show("02_block_async", pd.DataFrame(rows))
+    assert block.subproblem_solves.iloc[-1] < block.subproblem_solves.iloc[0], \
+        "the block variant solved no fewer subproblems, so it saved nothing"
+    # Skipping subproblems is an approximation, not a free saving. If every
+    # block fraction returns the SAME cost, the MIP gap is looser than the
+    # differences being measured - which is how this check read before
+    # MIPGAP_STO was threaded all the way down into the PH subproblems.
+    assert block.vs_RP_pct.nunique() > 1, (
+        "every block fraction returned an identical cost; that is the signature "
+        "of a MIP gap larger than the quantity being measured, not of a free "
+        "saving")
+    print(f"\nblock asynchrony: {block.subproblem_solves.iloc[0]} -> "
+          f"{block.subproblem_solves.iloc[-1]} subsolves, and quality moves "
+          f"{block.vs_RP_pct.min():+.4f}% to {block.vs_RP_pct.max():+.4f}% - "
+          f"cheaper is not reliably worse, and not reliably the same either")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    ax.plot(lock.stage1_years, lock.VSS_pct, "o-", color=BLUE, lw=2)
+    ax.set_xlabel("years committed before the uncertainty resolves")
+    ax.set_ylabel("VSS (% of RP)")
+    ax.set_title("Part 2: VSS measures how much you commit")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "02_vss_by_commitment.png", dpi=150)
+    plt.close(fig)
+    return dict(three_case=r, by_scenario=detail, lock=lock, rho=rho_tab)
+
+
+# Sections are grouped by which setup they need, so `--only 02` never pays for
+# the Part 4 planner calibration and `--only 4c` never loads the network.
+NET_SECTIONS = {"01": run_01, "02": run_02}
+CHAIN_SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
+SECTIONS = {**NET_SECTIONS, **CHAIN_SECTIONS}
 
 
 def main() -> None:
@@ -503,6 +763,7 @@ def main() -> None:
     for later, needs in (("4d", "4c"), ("4e", "4d")):
         if later in wanted and needs not in wanted:
             wanted.insert(wanted.index(later), needs)
+    wanted.sort(key=lambda n: list(SECTIONS).index(n))
 
     TABLES.mkdir(parents=True, exist_ok=True)
     FIGURES.mkdir(parents=True, exist_ok=True)
@@ -516,7 +777,11 @@ def main() -> None:
     print(f"sections       : {wanted}")
     t0 = time.time()
 
-    ctx = setup(source, max_iter=6 if args.quick else 16)
+    ctx = {"_net_source": source}
+    if any(n in NET_SECTIONS for n in wanted):
+        ctx["net"] = setup_network(source, NET_T)
+    if any(n in CHAIN_SECTIONS for n in wanted):
+        ctx.update(setup(source, max_iter=6 if args.quick else 16))
     for name in wanted:
         ctx[f"_{name}"] = SECTIONS[name](ctx)
 

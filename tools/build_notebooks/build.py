@@ -23,6 +23,7 @@ many code cells have no markdown above them, how many predict-prompts there are.
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib
 import sys
 from pathlib import Path
@@ -32,9 +33,15 @@ import nbformat as nbf
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "tools"))
 
+# A teaching cell may hold a function only if the function IS the lesson (an
+# algorithm you cannot write out inline, or machinery whose sameness is the
+# point). Marking it costs a stated reason and a column in the audit table.
+LESSON_MARK = "THE FUNCTION IS THE LESSON"
+
 # every notebook the builders can produce, in series order
 BUILDERS = {
     "01": "build_notebooks.nb_01",
+    "02": "build_notebooks.nb_02",
     "04ab": "build_notebooks.nb_04ab",
     "04c": "build_notebooks.nb_04c",
     "04c_exact": "build_notebooks.nb_04c_exact",
@@ -75,6 +82,60 @@ def notebook(tag: str) -> nbf.NotebookNode:
     return nb
 
 
+# The shared structure cell is identifiable by the comment on its horizon knob.
+# Every name it binds is a knob later cells read; none of them is a name a later
+# cell should rebind. See _knob_shadowing below.
+STRUCTURE_CELL_MARK = "# horizon, years"
+
+
+def _assigned_names(src: str) -> set:
+    """Names bound in one cell's MODULE scope.
+
+    Descends into `for` / `while` / `if` / `with` / `try` bodies, because a
+    binding there leaks to module scope and that is exactly where the bug this
+    check exists for lived. Does NOT descend into function or class bodies, and
+    ignores comprehension targets, since neither leaks.
+    """
+    try:
+        tree = ast.parse(src)
+    except SyntaxError:
+        return set()
+    out, stack = set(), list(tree.body)
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            out.add(node.name)                  # the def itself binds a name
+            continue                            # but its body is another scope
+        targets = []
+        if isinstance(node, ast.Assign):
+            targets = node.targets
+        elif isinstance(node, (ast.For, ast.AsyncFor, ast.AugAssign, ast.AnnAssign)):
+            targets = [node.target]
+        for t in targets:
+            for x in ast.walk(t):
+                if isinstance(x, ast.Name):
+                    out.add(x.id)
+        for field in ("body", "orelse", "finalbody", "handlers"):
+            stack.extend(getattr(node, field, []) or [])
+    return out
+
+
+def _knob_shadowing(cells) -> list:
+    """Names the shared structure cell defines that a later cell rebinds."""
+    code = [(i, t) for i, (k, t) in enumerate(cells) if k == "code"]
+    struct = next((i for i, t in code if STRUCTURE_CELL_MARK in t), None)
+    if struct is None:
+        return []
+    knobs = _assigned_names(dict(code)[struct])
+    clashes = []
+    for i, t in code:
+        if i <= struct or "CARRIED OVER" in t:
+            continue                            # carried cells re-declare knobs
+        for name in sorted(_assigned_names(t) & knobs):
+            clashes.append((name, i))
+    return clashes
+
+
 def audit(tag: str, cells) -> dict:
     """The Part 10 pre-ship measurements, as numbers rather than impressions."""
     wrap = next((i for i, (k, t) in enumerate(cells)
@@ -85,7 +146,21 @@ def audit(tag: str, cells) -> dict:
     # this notebook's teaching, so it is exempt from the def and cell-length
     # rules -- but it is counted, so the exemption cannot be used quietly.
     carried = [(i, t) for i, t in code_before_wrap if "CARRIED OVER" in t]
-    teaching = [(i, t) for i, t in code_before_wrap if "CARRIED OVER" not in t]
+    # Part 0's five small functions each ARE the lesson, and CLAUDE.md Part 11
+    # blesses that shape. A cell may claim the same exemption, but it must say
+    # WHY on the marker line, and it is counted in its own column -- so, like
+    # CARRIED OVER, the exemption cannot be taken quietly.
+    is_lesson = [(i, t) for i, t in code_before_wrap
+                 if LESSON_MARK in t and "CARRIED OVER" not in t]
+    for i, t in is_lesson:
+        line = next(l for l in t.splitlines() if LESSON_MARK in l)
+        if len(line.split(LESSON_MARK, 1)[1].strip(": ")) < 20:
+            raise SystemExit(
+                f"{tag} cell {i}: {LESSON_MARK} needs a reason after it, "
+                f"stating why this function is the lesson rather than an "
+                f"abstraction hiding it. Got: {line.strip()!r}")
+    exempt = {i for i, _ in carried} | {i for i, _ in is_lesson}
+    teaching = [(i, t) for i, t in code_before_wrap if i not in exempt]
     early_defs = [(i, l) for i, t in teaching
                   for l in t.splitlines() if l.startswith("def ")]
     return dict(
@@ -94,6 +169,7 @@ def audit(tag: str, cells) -> dict:
         markdown=sum(1 for k, _ in cells if k == "md"),
         wrap_at=f"{100 * wrap / len(cells):.0f}%",
         carried_over=len(carried),
+        fn_is_lesson=len(is_lesson),
         defs_in_teaching=len(early_defs),
         longest_teaching_cell=max((len(t.splitlines()) for _, t in teaching),
                                   default=0),
@@ -105,6 +181,7 @@ def audit(tag: str, cells) -> dict:
         agreement_assert=any(k == "code" and "disagree" in t and "assert" in t
                              for k, t in cells),
         blank_markers=sum(1 for _, t in cells if "YOUR CODE HERE" in t),
+        knob_shadowing=len(_knob_shadowing(cells)),
     )
 
 
@@ -150,6 +227,7 @@ def main() -> int:
                   f"no outputs - execute it before committing)")
 
     keys = ["notebook", "cells", "markdown", "wrap_at", "carried_over",
+            "fn_is_lesson", "knob_shadowing",
             "defs_in_teaching",
             "longest_teaching_cell", "orphan_code_cells", "predict_prompts",
             "agreement_assert", "blank_markers"]

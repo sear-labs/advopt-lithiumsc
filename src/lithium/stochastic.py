@@ -48,6 +48,14 @@ __all__ = ["scenarios", "scenarios_n", "extensive_form", "stage1_keys",
 
 
 # ------------------------------------------------------------ scenario trees
+# Every function below differences one expectation against another -- VSS is
+# EEV - RP, EVPI is RP - WS, and the PH sweep reads costs 0.04% apart. `build`
+# defaults to a 0.005 MIP gap, which is an order of magnitude LARGER than the
+# quantities being measured, so a loose gap here does not add noise, it
+# manufactures the answer. Hence one tight default, shared, and threaded all the
+# way down rather than accepted and quietly dropped.
+MIPGAP_DEFAULT = 1e-6
+
 def scenarios(st: CoreStructure,
               growths=((0.010, 0.30), (0.070, 0.40), (0.140, 0.30)),
               r2_base: float = 105.0):
@@ -97,7 +105,8 @@ def stage1_keys(y, stage1_years):
 
 # --------------------------------------------------------- the extensive form
 def extensive_form(st: CoreStructure, scens, invest_years, stage1_years,
-                   quiet: bool = True, mipgap: float | None = None) -> gp.Model:
+                   quiet: bool = True,
+                   mipgap: float | None = MIPGAP_DEFAULT) -> gp.Model:
     """One monolithic MILP over all scenarios, with explicit nonanticipativity.
 
     Each scenario gets its own copy of the whole network, built into the same
@@ -134,9 +143,10 @@ def extensive_form(st: CoreStructure, scens, invest_years, stage1_years,
 
 
 # ------------------------------------------------------- progressive hedging
-def subproblem(st: CoreStructure, D, invest_years, stage1_years) -> gp.Model:
+def subproblem(st: CoreStructure, D, invest_years, stage1_years,
+               mipgap: float | None = MIPGAP_DEFAULT) -> gp.Model:
     """One scenario's problem, kept open so PH can re-set its objective."""
-    m = build(st, invest_years=invest_years, demand=D)
+    m = build(st, invest_years=invest_years, demand=D, mipgap=mipgap)
     m._base_obj = m._capex_expr + m._op_expr
     m._s1 = stage1_keys(m._y, stage1_years)
     return m
@@ -145,6 +155,7 @@ def subproblem(st: CoreStructure, D, invest_years, stage1_years) -> gp.Model:
 def progressive_hedging(st: CoreStructure, scens, invest_years, stage1_years,
                         rho: float | None = None, iters: int = 40,
                         tol: float = 1e-4, block_frac: float = 1.0,
+                        mipgap: float | None = MIPGAP_DEFAULT,
                         verbose: bool = False) -> dict:
     """Progressive hedging: solve the scenarios separately, agree by negotiation.
 
@@ -169,7 +180,7 @@ def progressive_hedging(st: CoreStructure, scens, invest_years, stage1_years,
     within a bounded number of iterations and random sampling does not guarantee
     that. There is deliberately no seed: nothing here is stochastic.
     """
-    subs = [(nm, p, subproblem(st, D, invest_years, stage1_years))
+    subs = [(nm, p, subproblem(st, D, invest_years, stage1_years, mipgap=mipgap))
             for (nm, p, D) in scens]
     n = len(subs)
     if rho is None:                      # scale rho to the capex of one build
@@ -219,12 +230,17 @@ def progressive_hedging(st: CoreStructure, scens, invest_years, stage1_years,
 
 # ------------------------------------------------- evaluating a stage-1 plan
 def evaluate_stage1(st: CoreStructure, scens, invest_years, stage1_years, z,
-                    quiet: bool = True):
-    """Fix stage-1 builds to a rounded `z`, re-optimise stage 2 per scenario."""
+                    quiet: bool = True,
+                    mipgap: float | None = MIPGAP_DEFAULT):
+    """Fix stage-1 builds to a rounded `z`, re-optimise stage 2 per scenario.
+
+    The result is compared against RP, so it must be measured the same way RP
+    was -- see MIPGAP_DEFAULT above.
+    """
     fixed = {k: (1 if z.get(k, 0) > 0.5 else 0) for k in z}
     tot = 0.0
     for (nm, p, D) in scens:
-        m = build(st, invest_years=invest_years, demand=D)
+        m = build(st, invest_years=invest_years, demand=D, mipgap=mipgap)
         for k, val in fixed.items():
             if k in m._y:
                 m._y[k].LB = m._y[k].UB = val
@@ -235,18 +251,19 @@ def evaluate_stage1(st: CoreStructure, scens, invest_years, stage1_years, z,
     return tot
 
 
-def wait_and_see(st: CoreStructure, scens, invest_years):
+def wait_and_see(st: CoreStructure, scens, invest_years,
+                 mipgap: float | None = MIPGAP_DEFAULT):
     """Each scenario solved with full knowledge. A lower bound; RP - WS is EVPI."""
     tot = 0.0
     for (nm, p, D) in scens:
-        m = build(st, invest_years=invest_years, demand=D)
+        m = build(st, invest_years=invest_years, demand=D, mipgap=mipgap)
         m.optimize()
         tot += p * m.ObjVal
     return tot
 
 
 def mean_value_stage1(st: CoreStructure, scens, invest_years, stage1_years,
-                      mipgap: float | None = None):
+                      mipgap: float | None = MIPGAP_DEFAULT):
     """Solve the deterministic mean-demand problem; return its stage-1 decisions.
 
     This is the strategy that "plans for the average". Evaluating it against the
@@ -295,22 +312,24 @@ def perfect_info_by_scenario(st: CoreStructure, scens, invest_years,
 
 
 def strategy_stage1(st: CoreStructure, scens, invest_years, stage1_years, which,
-                    rho: float = 300, iters: int = 60):
+                    rho: float = 300, iters: int = 60,
+                    mipgap: float | None = MIPGAP_DEFAULT):
     """The stage-1 decision each strategy produces.
 
     ``'EV'`` mean-demand deterministic, ``'SP'`` the extensive form, ``'PH'``
     progressive hedging.
     """
     if which == "EV":
-        return mean_value_stage1(st, scens, invest_years, stage1_years)
+        return mean_value_stage1(st, scens, invest_years, stage1_years,
+                                 mipgap=mipgap)
     if which == "SP":
-        ef = extensive_form(st, scens, invest_years, stage1_years)
+        ef = extensive_form(st, scens, invest_years, stage1_years, mipgap=mipgap)
         ef.optimize()
         return {k: ef._ys[0][k].X
                 for k in stage1_keys(ef._ys[0], stage1_years)}
     if which == "PH":
         return progressive_hedging(st, scens, invest_years, stage1_years,
-                                   rho=rho, iters=iters)["z"]
+                                   rho=rho, iters=iters, mipgap=mipgap)["z"]
     raise ValueError(f"unknown strategy {which!r}; expected 'EV', 'SP' or 'PH'")
 
 
@@ -350,15 +369,18 @@ def three_case_comparison(st: CoreStructure, scens, invest_years, stage1_years,
 
 def ph_three_case(st: CoreStructure, scens, invest_years, stage1_years,
                   rho: float = 300, iters: int = 60, block_frac: float = 1.0,
-                  mipgap: float = 1e-6) -> dict:
+                  mipgap: float = MIPGAP_DEFAULT) -> dict:
     """EV / SP / PI at ANY scenario count — no extensive form required.
 
     SP's stage-1 comes from progressive hedging rather than the monolithic model,
     so this scales past the point where that stops fitting. WS and EEV are
     per-scenario solves and were never size-constrained.
     """
+    # mipgap MUST reach the PH call: its `z` becomes SP's stage-1 plan, and
+    # that plan is then evaluated at `mipgap` and differenced against EEV. A
+    # plan found at a looser gap than it is scored at is the Part 6 defect.
     r = progressive_hedging(st, scens, invest_years, stage1_years, rho=rho,
-                            iters=iters, block_frac=block_frac)
+                            iters=iters, block_frac=block_frac, mipgap=mipgap)
     sp_fix = {k: (1.0 if v > 0.5 else 0.0) for k, v in r["z"].items()}
     ev_fix = mean_value_stage1(st, scens, invest_years, stage1_years,
                                mipgap=mipgap)

@@ -77,6 +77,12 @@ def test_builder_audit_passes(tag):
     assert row["predict_prompts"] >= 1, "no predict-before-you-run prompt"
     assert row["agreement_assert"], "no agreement assertion"
     assert row["blank_markers"] == 0, "these are worked examples, not exercises"
+    assert row["knob_shadowing"] == 0, (
+        "a later cell rebinds a name the shared structure cell defines. Part 2's "
+        "rho sweep used `r` as a loop variable, shadowing the discount rate, and "
+        "the notebook failed 46 cells later inside the package. Run "
+        "`python tools/build_notebooks/build.py --all` to see which name"
+    )
     assert row["longest_teaching_cell"] <= 40, (
         f"longest teaching cell is {row['longest_teaching_cell']} lines; split it"
     )

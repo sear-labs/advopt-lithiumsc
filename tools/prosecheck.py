@@ -17,6 +17,22 @@ without the change appearing in this list.
 
 Exit code is 1 when anything is flagged, so CI can gate on a curated allowlist
 (see `--baseline`) rather than on zero.
+
+KNOWN LIMITATION, measured 2026-09-03: percentages in prose are barely checked.
+The tolerance below has a flat 0.06 absolute floor, and it is applied to the
+`val / 100` candidate as well as the same-scale ones. At that scale 0.06 is six
+percentage points, so a prose figure of "73.5%" matches any printed decimal
+between roughly 0.68 and 0.79 -- and these notebooks are full of yields and
+fractions in that range. A deliberately stale "+73.5%" was verified to pass.
+
+Scaling the floor with the candidate raises the flag count from 32 to 92 across
+the seven notebooks; making the tolerance respect the prose figure's own decimal
+precision raises it to 117. Most of that increase is not stale prose but
+DERIVED percentages -- prose quoting a ratio of two printed numbers, where the
+ratio itself is never printed. Fixing this properly means teaching the checker
+to form derived candidates (pairwise ratios and percentage changes of printed
+numbers) and then adjudicating the remainder, which is its own piece of work.
+Until then, treat a clean percentage as unverified rather than verified.
 """
 from __future__ import annotations
 
@@ -29,6 +45,13 @@ from pathlib import Path
 import nbformat
 
 ROOT = Path(__file__).resolve().parents[1]
+
+# Notebook prose is full of maths: rho, mu, en-dashes, times signs. On Windows
+# stdout defaults to cp1252 and printing any of them raises UnicodeEncodeError
+# in the middle of the report, so the tool fails on exactly the notebooks it has
+# the most to say about.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
 NUM = re.compile(r"(?<![\w.])(-?\d[\d,]*(?:\.\d+)?)")
 

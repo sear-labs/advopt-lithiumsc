@@ -406,6 +406,36 @@ def test_the_ws_rp_eev_chain_holds(stoch):
         assert pi["cost"] <= ev["cost"] + 1e-6, f"scenario {i}: PI > EV"
 
 
+def test_plan_building_entry_points_accept_a_mipgap():
+    """A function that commits a DISCRETE plan must be told its precision.
+
+    `rolling_horizon` had no `mipgap`, so it solved every window at `build`'s
+    0.005 default while 01_deterministic's own `rolling()` uses 0.001. A looser
+    gap there does not shift the answer slightly: each window commits a
+    different set of builds and the error compounds across the windows that
+    follow. At W=3 it committed 5 units instead of 4.
+    """
+    import inspect
+    for name in ("build", "solve", "rolling_horizon", "evaluate_plan"):
+        sig = inspect.signature(getattr(L, name))
+        assert "mipgap" in sig.parameters or "kw" in sig.parameters, (
+            f"{name} cannot be told a MIP gap, so it cannot be made to agree "
+            f"with a notebook that sets one")
+
+
+def test_rolling_horizon_gap_changes_the_committed_plan(core):
+    """Evidence for the test above, rather than an assertion about an API.
+
+    If this ever stops holding, the gap no longer matters here and the
+    docstrings above should be corrected rather than trusted.
+    """
+    loose, _ = L.rolling_horizon(core, W=3, delta=3, invest_step=3, mipgap=0.005)
+    tight, _ = L.rolling_horizon(core, W=3, delta=3, invest_step=3, mipgap=0.001)
+    assert sum(loose.values()) != sum(tight.values()) or loose != tight, (
+        "the MIP gap no longer changes the committed plan at W=3; the warning "
+        "in rolling_horizon's docstring is now misleading")
+
+
 def test_progressive_hedging_is_deterministic(stoch):
     """There is no seed because nothing is random. Two runs must be identical."""
     kw = dict(rho=300, iters=8)
@@ -424,6 +454,64 @@ def test_ph_block_variant_solves_fewer_subproblems(stoch):
     half = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
                                  stoch["s1"], rho=300, iters=8, block_frac=0.5)
     assert half["subsolves"] < full["subsolves"]
+
+
+def test_every_stochastic_entry_point_accepts_a_mipgap():
+    """These functions difference expectations 0.01% apart against each other.
+
+    `build` defaults to a 0.005 MIP gap, which is an order of magnitude LARGER
+    than the quantities being measured, so a function that cannot be told the
+    gap cannot be made to measure them. Each one below silently used 0.005
+    until Part 2 was written against it.
+    """
+    import inspect
+    for name in ("subproblem", "progressive_hedging", "evaluate_stage1",
+                 "wait_and_see", "mean_value_stage1", "strategy_stage1",
+                 "ph_three_case", "three_case_comparison", "extensive_form"):
+        sig = inspect.signature(getattr(L, name))
+        assert "mipgap" in sig.parameters, (
+            f"{name} takes no mipgap, so it cannot be measured consistently "
+            f"with the quantities it is differenced against")
+        default = sig.parameters["mipgap"].default
+        assert default == 1e-6, (
+            f"{name} defaults to mipgap={default}; every stochastic entry "
+            f"point must share one tight default or two of them will be "
+            f"compared at different precisions")
+
+
+def test_ph_three_case_solves_and_scores_at_the_same_gap(stoch):
+    """A plan found at one gap and scored at another is not a measurement.
+
+    `ph_three_case` accepted a `mipgap`, used it for the scoring solves, and
+    dropped it before the progressive-hedging call that produces the plan being
+    scored. This asserts the argument actually reaches the subproblems.
+    """
+    import inspect
+    src = inspect.getsource(L.ph_three_case)
+    call = src[src.index("progressive_hedging("):]
+    call = call[:call.index(")")]
+    assert "mipgap" in call, (
+        "ph_three_case does not pass its mipgap down to progressive_hedging, "
+        "so SP's plan is found at a different precision from the one it is "
+        "then scored and differenced at")
+
+
+def test_block_asynchrony_is_an_approximation_not_a_free_saving(stoch):
+    """Skipping subproblems changes the answer, and the gap must be able to see it.
+
+    At `build`'s 0.005 default every block fraction returned an identical cost
+    and it looked like a free 63% saving. It was the gap, not the algorithm.
+    """
+    costs = {}
+    for bf in (1.0, 0.34):
+        ph = L.progressive_hedging(stoch["st"], stoch["scens"], stoch["iy"],
+                                   stoch["s1"], rho=300, iters=20, block_frac=bf)
+        costs[bf] = L.evaluate_stage1(stoch["st"], stoch["scens"], stoch["iy"],
+                                      stoch["s1"], ph["z"])
+    assert costs[1.0] != costs[0.34], (
+        "solving a third of the subproblems gave exactly the same cost as "
+        "solving all of them; that is a MIP gap wider than the effect, not a "
+        "free saving")
 
 
 def test_ph_penalty_stays_linear(stoch):
