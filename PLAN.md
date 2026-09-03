@@ -304,10 +304,10 @@ half-building it twice.
 |---|---|---|
 | 1 | **4e + 4d** — **done 2026-09-03** | `mpec.py` (`stackelberg`, `follower_qp`, `follower_marginal_cost`, `follower_legacy` — all three shared ones byte-identical across 4d and 4e) and `policy.py` (the three schedules as builders, plus `welfare`). 4e's policy args were already in `regions.py` from Phase 1. |
 | 2 | 4ab + 4c-exact — **done 2026-09-03** | `games.py` extended: `best_response_fixed_price`, `iterate_fixed_price` (4ab), `best_response_miqp`, `cournot_iterate_miqp` (4c-exact). All four exist in exactly one version each; `add_region` is byte-identical across 4ab/4c/4c-exact/4d. |
-| 3 | 1 + 2 + 5 | `core.py`: `build` ×3, `build_plan` ×2, `capex_pv_multiplier` ×2, `learning_breakpoints` ×2 |
+| 3 | **1 + 2** — Part 1 done 2026-09-03 | `network_instance.py` (a six-site network, a different instance family from Part 4's chain) and `core.py`: `build`, `build_plan`, `capex_pv_multiplier`, `learning_breakpoints`, `solve`, `evaluate_plan`, `rolling_horizon`, `staggered_years`. **Part 5 regrouped out** — its `build` shares 3.7% of its text with Parts 1/2 and is a different model. |
 | 4 | 2b + 2c | `stochastic.py`: `extensive_form` ×2, `subproblem` ×2, `ph`, `lshaped`, CVaR |
 | 5 | 3 + 3b | `network.py` core; `curves.py` already carries 3b's tier arithmetic |
-| 6 | 0 + 4f | `network.py`: `max_flow` ×2, `attacker_best_response` ×2, `bri`, `defender`. Fold Phase 4's Part 0 fix in here. |
+| 6 | 0 + 4f + **5** | `network.py`: `max_flow` ×2, `attacker_best_response` ×2, `bri`, `defender`. Fold Phase 4's Part 0 fix in here. |
 
 **Part 0 is the documented exception to the agreement assertion** *(decided
 2026-09-03)*. PLAN said all fourteen get one. Part 0 is a concepts guide whose

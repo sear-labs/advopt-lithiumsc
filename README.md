@@ -41,6 +41,7 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 
 | Notebook | What it covers | |
 |---|---|---|
+| `notebooks/01_deterministic.ipynb` | The deterministic network MILP, and four modelling choices that move the answer more than the data does: capex timing, investment granularity, learning, foresight | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/01_deterministic.ipynb) |
 | `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
 | `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
@@ -51,7 +52,7 @@ The badge is a one-click path: it clones this repo, `pip install -e .`, and runs
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
 notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
 
-The other nine notebooks are still at the repository root in their pre-migration form
+The other eight notebooks are still at the repository root in their pre-migration form
 (`Part0_Concepts_Guide.ipynb` and friends) and are migrated in Phase 2 of `PLAN.md`.
 
 ---
@@ -60,9 +61,14 @@ The other nine notebooks are still at the repository root in their pre-migration
 
 ```
 data/raw/                 the instance tables, read by BOTH tracks
+  -- the Part 4 game: two regions, three stages, competing firms --
   instance_base.csv         fixed / unit / opex / legacy, keyed (stage, region)
   efficiency.csv            yield ceiling, base, alpha, beta, delta, keyed by stage
   market.csv                demand base + growth, experience0, keyed by region
+  -- the Parts 1/2 network: six sites, arc flows, one planner --
+  network_sites.csv         capacity, lead, capex, opex, legacy, keyed by site
+  network_tiers.csv         the yield-curve parameters, keyed by tier
+  network_demand.csv        demand base + growth, keyed by region
 
 src/lithium/              the streamlined track
   instance.py               the three tables -> one Instance
@@ -71,11 +77,14 @@ src/lithium/              the streamlined track
   regions.py                add_region: one region's chain, policy-instrument superset
   planner.py                the cooperative benchmark
   games.py                  best response, iterated best response, collusion
+  core.py                   the Parts 1/2 network MILP - a DIFFERENT model family
+  network_instance.py       its three tables -> one NetworkInstance
   mpec.py                   Stackelberg as a single-level MPEC, and the QP that checks it
   policy.py                 tariff / quota / local-content schedules, and welfare
   data/                     a copy of data/raw/, shipped as package data
 
 notebooks/                the teaching track
+  01_deterministic.ipynb    the network MILP, and four choices that move the answer
   04ab_planner_and_game.ipynb  the planner and the first game, built by hand
   04c_cournot.ipynb         built by hand, narrated, ends in the agreement assertion
   04c_exact_miqp.ipynb      the exact MIQP; SMALL=True fits the free licence

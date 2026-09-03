@@ -20,9 +20,14 @@
     "37 - the horizon of the SMALL=False configuration, which the shipped run does not use",
     "9 figures in the section 12 table and prose - from a recorded SMALL=False run on an academic licence (2026-09-03). By design they do not reproduce at the shipped default."
   ],
+  "_01_deterministic": [
+    "2 x the -9 in $10^{-9}$",
+    "46,353.6 - the annual-mesh figure at the OLD 0.005 MIP gap, recorded in section 12.1 to show why the gap was tightened. By design it no longer reproduces."
+  ],
   "04c_cournot.ipynb": 5,
   "04d_stackelberg.ipynb": 3,
   "04e_policy.ipynb": 2,
   "04ab_planner_and_game.ipynb": 2,
-  "04c_exact_miqp.ipynb": 11
+  "04c_exact_miqp.ipynb": 11,
+  "01_deterministic.ipynb": 3
 }

@@ -34,6 +34,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 
 # every notebook the builders can produce, in series order
 BUILDERS = {
+    "01": "build_notebooks.nb_01",
     "04ab": "build_notebooks.nb_04ab",
     "04c": "build_notebooks.nb_04c",
     "04c_exact": "build_notebooks.nb_04c_exact",

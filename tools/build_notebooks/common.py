@@ -46,7 +46,7 @@ def _sub(text, **numbers):
     for name, value in numbers.items():
         text = text.replace(f"@{name.upper()}@", str(value))
     left = [m for m in ("@AGREE@", "@CHAIN@", "@REVENUE@", "@TIERS@", "@TIERED@",
-                       "@BLOCKS@", "@HORIZON_NOTE@")
+                       "@BLOCKS@", "@HORIZON_NOTE@", "@MODEL@")
             if m in text]
     if left:
         raise ValueError(f"unfilled section placeholders {left} in a shared cell")
@@ -776,3 +776,320 @@ for r in REGIONS:
 """)
 
     return out
+
+
+def network_instance_section(agree=13):
+    """Section 2 for Parts 1 and 2: the six-site network's three tables."""
+    out, M, C = _cells()
+
+    M(r"""
+## 2. The instance tables
+
+Two kinds of number go into this model and they are treated differently.
+
+A **knob** is a scalar carrying a concept — the discount rate, the asset life, the
+learning rate. Knobs stay written out in the cell where they are explained, and
+this notebook hands every one of them to the package in section @AGREE@, so the
+agreement assertion covers them.
+
+A **table** is instance data — many entries, indexed by the model's own sets,
+named nowhere in the prose. Tables live in `data/raw/`, and both this notebook and
+`src/lithium/` read the same file. Three tables:
+
+| file | keyed by | rows |
+|---|---|---|
+| `network_sites.csv` | `site` | 6 |
+| `network_tiers.csv` | `tier` | 2 |
+| `network_demand.csv` | `region` | 2 |
+
+**This is not the Part 4 instance.** Part 4's model is a two-region,
+three-stage chain owned by competing *firms*; this is a six-site network owned by
+one *planner*, with explicit arcs between sites. Both have a home region, an opex
+and a lead time, which makes them easy to confuse — they share nothing.
+""")
+
+    M(r"""
+Read the site table first and look at it as a **frame** — rows and columns —
+before turning it into anything the model can index.
+""")
+
+    C(r'''
+DATA = Path("data/raw")
+
+if not (DATA / "network_sites.csv").exists():
+    print("!" * 78)
+    print("! data/raw/ was not found, so this notebook is FALLING BACK to generated")
+    print("! numbers. Everything below will run and every figure will render, but the")
+    print("! results are NOT the shipped instance and are NOT an acceptable submission.")
+    print("! Fix: clone the repo (see section 0) or run this notebook from the repo root.")
+    print("!" * 78)
+    DATA = Path("_generated_fallback")
+    DATA.mkdir(exist_ok=True)
+    (DATA / "network_sites.csv").write_text(
+        "site,tier,home,cap_unit,lead,capex0,opex,legacy_units,legacy_vintage,legacy_retire\n"
+        "M1,M,R1,100,2,2000,1.3,2,-6,8\nM2,M,R2,100,2,2000,1.3,2,-6,8\n"
+        "P1,P,R1,100,3,3200,2.1,2,-3,13\nP2,P,R2,100,3,3200,2.1,2,-3,13\n"
+        "F1,F,R1,90,2,2800,2.4,2,-1,17\nF2,F,R2,90,2,2800,2.4,2,-1,17\n")
+    (DATA / "network_tiers.csv").write_text(
+        "tier,eta_bar,eta_0,alpha,beta,dbar\nP,0.95,0.80,0.030,0.010,0.05\n"
+        "F,0.93,0.78,0.025,0.008,0.05\n")
+    (DATA / "network_demand.csv").write_text(
+        "region,base,growth\nR1,100.0,0.03\nR2,100.0,0.03\n")
+
+sites_df = pd.read_csv(DATA / "network_sites.csv")
+print(f"network_sites.csv: {len(sites_df)} rows x {len(sites_df.columns)} columns")
+sites_df
+''')
+
+    M(r"""
+The other two tables. `network_tiers.csv` holds the yield-curve parameters for
+the two tiers that have a *yield* to speak of — processing and fabrication.
+Mining's yield is a single constant, so it is a knob, not a table.
+""")
+
+    C(r'''
+tiers_df = pd.read_csv(DATA / "network_tiers.csv")
+demand_df = pd.read_csv(DATA / "network_demand.csv")
+print(f"network_tiers.csv: {len(tiers_df)} rows    "
+      f"network_demand.csv: {len(demand_df)} rows")
+display(tiers_df)
+demand_df
+''')
+
+    M(r"""
+### 2.1 From table to lookup — see the key
+
+A frame shows rows and columns. **The model does not index by row number.** Every
+constraint below looks a value up by a key: `cap_unit['P1']`, `eta_bar['F']`,
+`legacy['M1']`. Build the dictionaries and print them in the form the constraints
+will use.
+
+The index sets come out of the table itself, in file order — mines, then
+processors, then fabricators — so the order the model iterates in is a property
+of the data, not of a `sorted()` call somewhere.
+""")
+
+    C(r'''
+REGIONS = list(dict.fromkeys(demand_df["region"]))
+TIER = {r.site: r.tier for r in sites_df.itertuples()}
+MINES = [s for s in TIER if TIER[s] == "M"]
+PROCS = [s for s in TIER if TIER[s] == "P"]
+FABS = [s for s in TIER if TIER[s] == "F"]
+SITES = MINES + PROCS + FABS
+
+HOME = {r.site: r.home for r in sites_df.itertuples()}
+CAP_UNIT = {r.site: float(r.cap_unit) for r in sites_df.itertuples()}
+LEAD = {r.site: int(r.lead) for r in sites_df.itertuples()}
+CAPEX0 = {r.site: float(r.capex0) for r in sites_df.itertuples()}
+OPEX = {r.site: float(r.opex) for r in sites_df.itertuples()}
+LEGACY = {r.site: (int(r.legacy_units), int(r.legacy_vintage), int(r.legacy_retire))
+          for r in sites_df.itertuples()}
+
+print(f"index sets:  REGIONS = {REGIONS}")
+print(f"             MINES   = {MINES}    PROCS = {PROCS}    FABS = {FABS}")
+print(f"             SITES   = {SITES}   <- the order every loop below follows\n")
+print(f"{'site':6s} {'tier':5s} {'home':5s} {'cap':>6s} {'lead':>5s} {'capex0':>8s}"
+      f" {'opex':>6s}  legacy (units, vintage, retires)")
+for s in SITES:
+    print(f"{s:6s} {TIER[s]:5s} {HOME[s]:5s} {CAP_UNIT[s]:6.0f} {LEAD[s]:5d}"
+          f" {CAPEX0[s]:8.0f} {OPEX[s]:6.2f}  {LEGACY[s]}")
+''')
+
+    M(r"""
+The same move for the two single-key tables. Note the asymmetry in the demand
+table: R2 starts smaller but grows more than twice as fast, so which region the
+network should serve changes over the horizon. That is the whole reason the model
+is multi-period.
+""")
+
+    C(r'''
+ETA_BAR = {r.tier: float(r.eta_bar) for r in tiers_df.itertuples()}
+ETA_0 = {r.tier: float(r.eta_0) for r in tiers_df.itertuples()}
+ALPHA = {r.tier: float(r.alpha) for r in tiers_df.itertuples()}
+BETA = {r.tier: float(r.beta) for r in tiers_df.itertuples()}
+DBAR = {r.tier: float(r.dbar) for r in tiers_df.itertuples()}
+
+DEMAND_BASE = {r.region: float(r.base) for r in demand_df.itertuples()}
+DEMAND_GROWTH = {r.region: float(r.growth) for r in demand_df.itertuples()}
+
+print("keyed by tier:")
+for k in ETA_BAR:
+    print(f"  {k!r}: ceiling {ETA_BAR[k]:.2f}  vintage-1 {ETA_0[k]:.2f}"
+          f"  frontier/yr {ALPHA[k]:.3f}  within-life/yr {BETA[k]:.3f}"
+          f"  max lifetime gain {DBAR[k]:.2f}")
+print("\nkeyed by region:")
+for g in REGIONS:
+    print(f"  {g!r}: demand starts at {DEMAND_BASE[g]:6.1f}, "
+          f"growing {100 * DEMAND_GROWTH[g]:.1f}% a year")
+''')
+
+    M(r"""
+### 2.2 Want to experiment? Change a number here, not in the CSV
+
+Each table is now a dictionary keyed the way the model indexes. Assign to a key to
+override one entry. The change flows into every model built below **and** into the
+section @AGREE@ agreement check, because the package takes the data as an argument
+instead of re-reading the file.
+""")
+
+    C(r'''
+# ---------------------------------------------------------------------------
+# Example - make the two processors equally expensive to build:
+#
+#     CAPEX0['P2'] = CAPEX0['P1']
+#
+# Uncomment, then re-run this cell and everything below it. P2's build-cost
+# advantage disappears, the planner's siting choice shifts toward P1, and the
+# section @AGREE@ assertion stays green because the notebook passes CAPEX0 to
+# the package. Re-run with it commented out to get the shipped instance back.
+# ---------------------------------------------------------------------------
+print(f"CAPEX0['P1'] = {CAPEX0['P1']:.0f}, CAPEX0['P2'] = {CAPEX0['P2']:.0f}"
+      f"   (P2 is {100 * (1 - CAPEX0['P2'] / CAPEX0['P1']):.0f}% cheaper today)")
+''')
+
+    return [(k, _sub(t, agree=agree)) for k, t in out]
+
+
+def network_structure_section(agree=13, model=6):
+    """Section 3 for Parts 1 and 2: everything derived from the tables and knobs."""
+    out, M, C = _cells()
+
+    M(r"""
+## 3. The knobs, and the structure derived from them
+
+Everything in this section is **derived**: the horizon, discount factors, the
+capital recovery factor, yields by vintage, the demand path, transport costs.
+None of it is data and none of it is a knob — it is arithmetic on the two, and
+doing that arithmetic is the point.
+
+`lithium.core.build_core_structure` computes the same things, and section @AGREE@
+is what proves the two derivations agree.
+
+### 3.1 The horizon and the time value of money
+
+`T` and `r` are the two knobs everything else in this section hangs off.
+""")
+
+    C(r'''
+T = 20        # horizon, years
+r = 0.05      # discount rate
+LIFE = 20     # asset life, years
+MAX_BUILDS = 3   # units that may be built at one site in one decision year
+
+YEARS = list(range(1, T + 1))
+DF = {t: 1.0 / (1 + r) ** t for t in YEARS}
+CRF = r * (1 + r) ** LIFE / ((1 + r) ** LIFE - 1)
+
+print(f"horizon {T} years at r = {r}")
+print(f"CRF = {CRF:.6f}   (a 1.0 lump becomes {CRF:.4f} per year for {LIFE} years)")
+print(f"discount factor: year 1 {DF[1]:.4f}, year {T} {DF[T]:.4f}"
+      f"  -> the last year is worth {100 * DF[T]:.0f}% of the first")
+''')
+
+    M(r"""
+### 3.2 Yields: a vintage effect and an ageing effect
+
+Two things move an asset's yield, and they are not the same thing.
+
+**The frontier improves.** An asset built later starts closer to the ceiling,
+because the technology available in that year is better. That is `ALPHA`.
+
+**An asset improves within its own life.** Operating experience lifts it toward
+the ceiling too, at rate `BETA` — but by at most `DBAR` above where it started,
+because a plant cannot be rebuilt by being run.
+
+`ETA_MIN` clamps the arithmetic: a legacy asset from vintage −6 would otherwise
+compute to something absurd.
+
+**These curves never cross.** A later vintage starts higher and ages along a
+parallel path, so it stays higher forever. That is worth checking rather than
+assuming, and the cell asserts it.
+""")
+
+    C(r'''
+ETA_MINE = 0.90    # ore -> concentrate; constant, so a knob rather than a table
+ETA_MIN = 0.60     # clamp: legacy assets cannot be arbitrarily bad
+
+VINTAGES = sorted({lv for (_, lv, _) in LEGACY.values()} | set(YEARS))
+ETA = {}
+for tier in ("P", "F"):
+    eb, e0 = ETA_BAR[tier], ETA_0[tier]
+    a, b, db = ALPHA[tier], BETA[tier], DBAR[tier]
+    for v in VINTAGES:
+        e_new = max(eb - (eb - e0) * (1 - a) ** (v - 1), ETA_MIN)
+        for t in YEARS:
+            e_t = eb - (eb - e_new) * (1 - b) ** (t - v)
+            ETA[tier, v, t] = max(ETA_MIN, min(e_new + db, e_t))
+
+assert all(ETA_MIN <= v <= 1.0 for v in ETA.values()), "a yield outside [ETA_MIN, 1]"
+# a later vintage must stay above an earlier one, in every year both are running
+assert all(ETA["P", 10, t] >= ETA["P", 2, t] for t in YEARS if t >= 10), \
+    "vintage curves crossed - the frontier and ageing effects are mis-specified"
+
+print(f"{len(ETA)} yields, keyed (tier, vintage, year)\n")
+print(f"processing yield, by vintage and year:")
+print(f"{'vintage':>8s} " + "".join(f"{'yr ' + str(t):>9s}" for t in (1, 5, 10, 15, 20)))
+for v in (-3, 1, 5, 10, 15):
+    print(f"{v:8d} " + "".join(f"{ETA['P', v, t]:9.4f}" if t >= max(v, 1) else f"{'-':>9s}"
+                               for t in (1, 5, 10, 15, 20)))
+''')
+
+    M(r"""
+### 3.3 Demand, and the transport that makes geography matter
+
+Demand grows from each region's base at its own rate. Transport is four times
+dearer across regions than within one, and that single ratio is what stops the
+planner simply building everything in whichever region is cheapest.
+""")
+
+    C(r'''
+TRANSPORT_OWN, TRANSPORT_CROSS = 0.4, 1.6
+SLACK_PEN = 45.0     # penalty per unit of demand left unmet
+
+D = {(g, t): DEMAND_BASE[g] * (1 + DEMAND_GROWTH[g]) ** (t - 1)
+     for g in REGIONS for t in YEARS}
+TC = {(a, b): (TRANSPORT_OWN if HOME[a] == HOME[b] else TRANSPORT_CROSS)
+      for a in SITES for b in SITES}
+TC_DEM = {(f, g): (TRANSPORT_OWN if HOME[f] == g else TRANSPORT_CROSS)
+          for f in FABS for g in REGIONS}
+
+print(f"{'year':>5s} " + "".join(f"{g:>10s}" for g in REGIONS))
+for t in (1, 5, 10, 15, 20):
+    print(f"{t:5d} " + "".join(f"{D[g, t]:10.2f}" for g in REGIONS))
+cross = [t for t in YEARS if D[REGIONS[1], t] > D[REGIONS[0], t]]
+print(f"\n{REGIONS[1]} overtakes {REGIONS[0]} in year {min(cross)}"
+      if cross else f"\n{REGIONS[1]} never overtakes {REGIONS[0]}")
+print(f"transport: {TRANSPORT_OWN} within a region, {TRANSPORT_CROSS} across "
+      f"({TRANSPORT_CROSS / TRANSPORT_OWN:.0f}x)")
+''')
+
+    M(r"""
+### 3.4 The learning knobs
+
+Capex splits in two: a **site adder** that never gets cheaper — land, permits,
+connection — and a **technology** component that may. `LEARN_FRAC` is the share
+that is technology, and only the processing and fabrication tiers learn, because
+mining is mature.
+
+`LR` is the learning rate: the fraction by which unit cost falls per doubling of
+cumulative capacity. `Q0` is the incumbent cumulative capacity the curve starts
+from, and `C_FLOOR_FRAC` stops it falling to zero.
+""")
+
+    C(r'''
+LEARN_TIERS = ("P", "F")     # mining is mature; recovery technology learns
+LEARN_SITES = [s for s in SITES if TIER[s] in LEARN_TIERS]
+LEARN_FRAC = 0.70            # share of capex that is learnable technology
+LR = 0.20                    # unit cost falls 20% per doubling of capacity
+Q0 = 380.0                   # incumbent cumulative capacity
+C_FLOOR_FRAC = 0.55          # floor, as a fraction of the starting unit cost
+G_EXOG = 0.035               # exogenous capex decline per year, for that mode
+
+print(f"learning sites: {LEARN_SITES}   (mining excluded)")
+print(f"of each site's capex0, {100 * LEARN_FRAC:.0f}% is technology that can "
+      f"learn and {100 * (1 - LEARN_FRAC):.0f}% is a site adder that cannot")
+print(f"learning rate {100 * LR:.0f}% per doubling, floored at "
+      f"{100 * C_FLOOR_FRAC:.0f}% of the starting cost")
+''')
+
+    return [(k, _sub(t, agree=agree, model=model)) for k, t in out]
