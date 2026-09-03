@@ -271,3 +271,86 @@ def test_network_demand_rebuilds_from_base_and_growth():
     assert abs(d["R2", 1] - 85.0) < 1e-12
     # R2 grows faster, so it must overtake R1 inside a 20-year horizon
     assert d["R2", 20] > d["R1", 20], "the asymmetry the instance exists for is gone"
+
+
+# ------------------------------------------ the Parts 1/2 network core model
+CORE_KNOBS = dict(T=20, r=0.05, life=20, max_builds=3, eta_mine=0.90,
+                  eta_min=0.60, transport_own=0.4, transport_cross=1.6,
+                  slack_pen=45.0, learn_tiers=("P", "F"), learn_frac=0.70,
+                  lr=0.20, q0=380.0, c_floor_frac=0.55, g_exog=0.035)
+
+
+@pytest.fixture(scope="module")
+def core():
+    inst = L.load_network_instance(ROOT / "data" / "raw")
+    return L.build_core_structure(inst, **CORE_KNOBS)
+
+
+def test_core_structure_derives_the_sets(core):
+    assert core.years == list(range(1, 21))
+    assert core.learn_sites == ("P1", "P2", "F1", "F2"), "mining should not learn"
+    assert len(core.ETA) == 920, "yields by (tier, vintage, year)"
+    assert all(core.eta_min <= v <= 1.0 for v in core.ETA.values()), \
+        "a yield outside [eta_min, 1] is not a yield"
+
+
+def test_core_yields_improve_with_vintage_and_age(core):
+    """The two effects the vintage model exists to represent."""
+    # a later vintage starts closer to the ceiling
+    assert core.ETA["P", 10, 12] > core.ETA["P", 2, 12]
+    # and an asset improves within its own life
+    assert core.ETA["P", 2, 12] > core.ETA["P", 2, 3]
+
+
+def test_core_lumpsum_costs_more_than_annualized(core):
+    """Part 1 section 4: lump-sum charges the whole asset inside the horizon."""
+    iy = list(range(1, 21, 3))
+    a = L.build(core, invest_years=iy, capex_mode="annualized", learning="none")
+    a.optimize()
+    b = L.build(core, invest_years=iy, capex_mode="lumpsum", learning="none")
+    b.optimize()
+    assert a.SolCount > 0 and b.SolCount > 0
+    assert b.ObjVal > a.ObjVal, "lump-sum should charge more inside the horizon"
+
+
+def test_core_endogenous_learning_adds_sos2(core):
+    """The SOS2 sets are what stop the convex combination exploiting the chord."""
+    iy = list(range(1, 21, 3))
+    none = L.build(core, invest_years=iy, learning="none")
+    endo = L.build(core, invest_years=iy, learning="endogenous")
+    none.update(); endo.update()
+    assert none.NumSOS == 0
+    assert endo.NumSOS > 0, "endogenous learning without SOS2 is the Part 3 bug"
+
+
+def test_core_learning_never_raises_cost(core):
+    """Learning is a cost reduction; a mode that raised cost would be a bug."""
+    iy = list(range(1, 21, 3))
+    objs = {}
+    for mode in ("none", "exogenous", "endogenous"):
+        m = L.build(core, invest_years=iy, learning=mode)
+        m.optimize()
+        assert m.SolCount > 0, f"learning={mode} found no solution"
+        objs[mode] = m.ObjVal
+    assert objs["exogenous"] < objs["none"]
+    assert objs["endogenous"] < objs["none"]
+
+
+def test_core_mipgap_collapse(core):
+    """PLAN.md group 3: Part 2's build adds `mipgap`; None must reproduce Part 1."""
+    iy = list(range(1, 21, 3))
+    a = L.build(core, invest_years=iy, mipgap=None)
+    a.optimize()
+    b = L.build(core, invest_years=iy)
+    b.optimize()
+    assert abs(a.ObjVal - b.ObjVal) / abs(b.ObjVal) < 1e-9
+    assert a.NumVars == b.NumVars and a.NumConstrs == b.NumConstrs
+
+
+def test_core_staggered_mesh_is_cheaper_than_annual(core):
+    """Part 1 section 5: a staggered mesh buys most of the accuracy for fewer bins."""
+    annual = L.build(core, invest_years=list(range(1, 21)))
+    stag = L.build(core, invest_years=L.staggered_years(20))
+    annual.update(); stag.update()
+    assert stag.NumBinVars < annual.NumBinVars
+    assert L.staggered_years(20) == [1, 2, 3, 4, 5, 6, 7, 9, 11, 16]

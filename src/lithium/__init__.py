@@ -15,6 +15,9 @@ Quick start::
     inst = load_instance()                 # the packaged CSVs
     struct = build_structure(inst)         # sets, windows, discount weights
 """
+from .core import (CoreStructure, build, build_core_structure, build_plan,
+                   capex_pv_multiplier, evaluate_plan, learning_breakpoints,
+                   rolling_horizon, solve, staggered_years)
 from .curves import (capex_breakpoints, capex_cum_multiplier,
                      capex_unit_multiplier, opex_tiers, revenue_breakpoints)
 from .games import (best_response_cournot, best_response_fixed_price,
@@ -41,6 +44,9 @@ __all__ = [
     "capex_unit_multiplier", "capex_cum_multiplier", "capex_breakpoints",
     "revenue_breakpoints", "opex_tiers",
     "add_region", "solve_planner",
+    "CoreStructure", "build_core_structure", "build", "build_plan",
+    "capex_pv_multiplier", "learning_breakpoints", "solve",
+    "evaluate_plan", "rolling_horizon", "staggered_years",
     "stackelberg", "follower_qp", "follower_marginal_cost", "follower_legacy",
     "tariff_schedule", "quota_schedule", "local_content_schedule", "welfare",
     "inverse_demand", "best_response_cournot", "cournot_iterate",
