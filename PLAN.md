@@ -273,7 +273,43 @@ untested is the badge itself.
 and runs Part 4c to completion, and the assert passes. Everything but the badge
 resolution is verified locally.
 
-### Phase 2 — migrate the rest *(the bulk — reckon a day per two notebooks)*
+### Phase 2 — migrate the rest *(the bulk — six grouped sessions)*
+
+**Ordering revised 2026-09-03, after Phase 1 measured the duplication.** Hashing
+every top-level `def` across the fourteen showed the ten most-duplicated
+functions are already single implementations in `src/lithium/` — `set_tiers`
+(×5), `add_region` / `solve_planner` / `_cap_unit_mult` / `_cap_cum_mult` (×4
+each), `_rev_breakpoints` / `best_response_cournot` / `cournot_iterate` /
+`market_outcome` (×3 each), `joint_profit_max` (×2). So the remaining work is
+five package modules, and notebooks are grouped by **which module they share**
+rather than strictly worst-first: each group builds its module once instead of
+half-building it twice.
+
+| # | notebooks | module built |
+|---|---|---|
+| 1 | **4e + 4d** | `games.py` extended: `stackelberg` ×2, `follower_legacy` ×2, `follower_marginal_cost` ×2, `follower_qp`. 4e's policy args are already in `regions.py` from Phase 1. |
+| 2 | 4ab + 4c-exact | `best_response_cournot_miqp`, `cournot_iterate_miqp`, behind `SMALL = True` |
+| 3 | 1 + 2 + 5 | `core.py`: `build` ×3, `build_plan` ×2, `capex_pv_multiplier` ×2, `learning_breakpoints` ×2 |
+| 4 | 2b + 2c | `stochastic.py`: `extensive_form` ×2, `subproblem` ×2, `ph`, `lshaped`, CVaR |
+| 5 | 3 + 3b | `network.py` core; `curves.py` already carries 3b's tier arithmetic |
+| 6 | 0 + 4f | `network.py`: `max_flow` ×2, `attacker_best_response` ×2, `bri`, `defender`. Fold Phase 4's Part 0 fix in here. |
+
+**Part 0 is the documented exception to the agreement assertion** *(decided
+2026-09-03)*. PLAN said all fourteen get one. Part 0 is a concepts guide whose
+five small functions *are* the lesson and mostly have no packaged counterpart:
+`max_flow` and `attacker_best_response` also live in 4f and **will** be asserted
+against `network.py` in group 6, but `eta`, `Q`, `dual_slope`, `flow_under` and
+`follower_kkt` have nothing to compare against. Packaging them purely to have
+something to assert would add a copy in order to check a copy. Part 0 therefore
+ships with an assertion covering the two functions that have a counterpart, and
+a stated exception for the rest — recorded in the notebook itself so it reads as
+a decision rather than an omission.
+
+**`notebooks/00_index.ipynb` is built at the end of Phase 2** *(decided
+2026-09-03)*, not now. With one notebook migrated it only duplicates the
+README's table; its value is as the front door over a full set.
+
+#### Per-notebook work
 
 **Scope decided 2026-09-02: all fourteen**, production track included. Parts 2b,
 2c, 4f and 5 get narration, predict-prompts and agreement asserts like the rest.
@@ -296,12 +332,17 @@ worst offenders against "short enough to read without scrolling".
 
 ### Phase 3 — the checks that stop it recurring *(half a day)*
 
-- [ ] `tools/prosecheck.py` — every number in markdown against the executed
-      outputs. Would have caught §1.1 the day it appeared.
+- [x] `tools/prosecheck.py` — every number in markdown against the executed
+      outputs. Written and used on 04c during Phase 1 (0 unexplained mismatches
+      across 47 markdown cells); committed 2026-09-03. Still to wire into CI.
 - [ ] `tools/dup.py` — fails if a function body appears in two places. This is
-      the guard that makes the two-folder split hold.
-- [ ] `tools/structcheck.py` — no `def` above the teaching section; every code
-      cell narrated; at least one predict-prompt.
+      the guard that makes the two-folder split hold, and the one Phase 3 item
+      not yet started.
+- [x] `tools/structcheck.py` — **absorbed into `tests/test_notebooks.py`** during
+      Phase 1 rather than built as a separate tool: it asserts the agreement
+      assertion is present, the notebook ships executed, and no `def` longer than
+      8 lines sits in the first half. A separate script would have been a second
+      copy of the same check.
 - [ ] `scripts/run_all.py`, smoke tests on the invariants already used informally
       (`WS <= RP <= EEV`, planner cost ≤ competitive cost at matched volume,
       conservation, non-negativity)

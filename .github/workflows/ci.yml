@@ -28,3 +28,5 @@ jobs:
           test -z "$(git ls-files '*.lic')" || { echo "a .lic file is tracked"; exit 1; }
       - run: python scripts/run_all.py
       - run: pytest -q
+      - name: every number in the prose came from a run
+        run: python tools/prosecheck.py --baseline tools/prosecheck_baseline.json
