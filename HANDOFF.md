@@ -21,9 +21,9 @@ design decisions are settled. I want you to **build** Phase 1.
 
 ## Where things stand
 
-Eight commits, tagged `pre-remediation-2026-09-02` at the starting state. Nothing
-has been built yet — every change so far is to documentation, plus Phase 0's fixes
-to Part 4c.
+The starting state is tagged `pre-remediation-2026-09-02`; run `git log --oneline`
+for what has happened since. Nothing has been *built* yet — every change so far is
+to documentation and to `dispatch-template.zip`, plus Phase 0's fixes to Part 4c.
 
 **Phase 0** back-ported the default-argument-capture fix to both call sites in
 `Part4c_Cournot_Endogenous_Price.ipynb`, removed a duplicate cell, corrected
@@ -102,16 +102,22 @@ it flow into both the hand-built model and the check.
 **Acceptance:** a student with a Google account and no software opens the badge,
 runs Part 4c top to bottom without writing anything, and the assertion passes.
 
-## Also open, from the template review
+## The template is already fixed — use it as shipped
 
-`dispatch-template.zip` ships `PROJECT_CONVENTIONS.md` as its `CLAUDE.md` — the
-**engineering-only** standard, with no teaching half and no boundary section. Its
-own README then says *"config.yaml — every parameter — the ONLY place numbers
-live"*, while its own teaching notebook hardcodes `RAMP_MW = 20  # <-- change me`
-for an exercise. That is exactly the failure `CLAUDE.md` Part 0 predicts. The fix
-is to ship `Code and Teaching Standard (portable).md` as the template's `CLAUDE.md`
-and add the knob carve-out to its README. **Ask before touching the zip** — it is a
-distributed artifact and may be in use elsewhere.
+`dispatch-template.zip` used to ship `PROJECT_CONVENTIONS.md` as its `CLAUDE.md`
+(the engineering-only half, no teaching standard, no boundary section) while its
+README claimed *"config.yaml, every parameter, the ONLY place numbers live"* and
+its own teaching notebook hardcoded `RAMP_MW = 20  # <-- change me`. Fixed
+2026-09-02: it now ships the merged standard, the README carries the tables/knobs
+carve-out, and `01_model_explained.ipynb` demonstrates the index-key printout and
+the commented edit example. Verified by running `pytest -q` on a fresh extraction
+of the rebuilt zip: 6 passed, including the notebook-execution test that runs the
+anti-drift assertion.
+
+So take the template's `CLAUDE.md` and its notebook shape at face value — they
+agree with this repo's standard now. One thing it still does *not* do: it ships
+its notebooks stripped of outputs, against its own "ship it executed" rule. Don't
+copy that.
 
 ## Traps specific to this repo
 

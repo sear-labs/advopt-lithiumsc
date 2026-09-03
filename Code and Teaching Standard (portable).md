@@ -539,6 +539,20 @@ Paste this into a chat when asking an assistant to write or revise teaching code
 > duplication is fine; deliberate duplication with nothing comparing the copies is
 > how a fix gets applied in three places out of four.
 >
+> **Split the numbers into tables and knobs.** A knob is a scalar carrying a
+> concept — a rate, a count, a limit, anything the narration explains or invites
+> the reader to change. Knobs stay written out in the cell, and the notebook hands
+> them to the package explicitly, so the assertion already covers them. A table is
+> instance data — many entries, indexed by the model's sets, named nowhere in the
+> prose. Tables live in one file both the notebook and the package read, because
+> if each types its own copy a failed assertion cannot distinguish a typo in the
+> data from a bug in a constraint. Load the table, render it, and then print the
+> dictionary form so the key — `gen`, `(stage, region)`, whatever the model looks
+> values up by — is explicit rather than implied by punctuation. Have the package
+> take the data as an argument and never re-read the file, so a reader's edit
+> flows into both the hand-built model and the check and the assertion stays
+> green. Then add a commented-out worked example of overriding one entry.
+>
 > Every specific number in the prose must come from actually running the code, not
 > from memory. If the prose names a particular outcome, check the answer is unique
 > — where several answers tie, different libraries or seeds produce different results
