@@ -89,6 +89,57 @@ next cell reads one from the environment or, on Colab, from the secrets panel,
 and falls back to the default licence when it finds nothing.
 """)
 
+    M(r"""
+### 1.1 Getting a licence, if you want section 12
+
+**Most readers need nothing here.** `pip install gurobipy` ships a restricted
+licence, and everything through section 11 fits inside it. Skip to 1.2.
+
+If you do want to run section 12, you need a **WLS** licence — and *which kind*
+matters more than it looks.
+
+| | what it is | works in Colab? |
+|---|---|---|
+| **Named-User Academic** | a `gurobi.lic` file | **No.** Node-locked to one machine, so it cannot travel |
+| **WLS Academic** | three values checked over the network | **Yes.** This is the one you want |
+
+Both are free for academics with a university email address, from the **Gurobi
+User Portal** (`portal.gurobi.com`) — register, then request a licence from the
+licences section. A WLS Academic licence gives you three values:
+
+```
+WLSACCESSID    a UUID
+WLSSECRET      a UUID  <- this one is the secret; treat it like a password
+LICENSEID      a number
+```
+
+**Putting them into Colab.** Click the **key icon** in the left sidebar to open
+Secrets, add three secrets named exactly
+
+```
+GRB_WLSACCESSID     GRB_WLSSECRET     GRB_LICENSEID
+```
+
+and switch on notebook access for each. That is the whole setup.
+
+Two things worth understanding rather than just following.
+
+**A Colab secret binds to your Google account, not to the notebook.** So this
+notebook can be shared, forked, or published and it still carries no key — every
+reader supplies their own, and nobody can read anyone else's. That property is
+the entire reason to do it this way rather than with a cell that asks you to
+paste a value.
+
+**`LICENSEID` is a number, and `userdata.get()` returns a string.** The next cell
+casts it with `int()`. Without that cast Gurobi rejects the environment in a way
+that does not obviously say why — a genuine time-waster, and the reason the cast
+has a comment on it.
+
+Running locally instead? Set the same three names as environment variables. The
+next cell checks the environment first and Colab's secrets second, so the same
+notebook works either way with no edit.
+""")
+
     C(r'''
 import os
 
@@ -121,7 +172,7 @@ print("serves both. Nothing below section 12 needs a key.")
 ''')
 
     M(r"""
-### 1.1 The size switch
+### 1.2 The size switch
 
 `SMALL` shrinks the horizon from 13 periods to 3. Everything else is unchanged,
 so the model is the same model — just small enough to solve as a quadratic on a
