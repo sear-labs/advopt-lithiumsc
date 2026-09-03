@@ -1,8 +1,15 @@
-# --- credentials: never commit. gurobi.lic in this folder carries a WLS secret.
+# --- credentials: never commit.
+# A machine-global excludesfile on the author's machine covers most of this too,
+# but a global ignore does NOT travel with a clone. This repo is going public, so
+# it carries its own list and does not rely on anyone's machine being set up.
 gurobi.lic
 *.lic
+*WLSKeyinfo*
 .env
 .env.*
+*.env
+.secrets/
+service-account*.json
 
 # --- solver / build noise
 gurobi.log

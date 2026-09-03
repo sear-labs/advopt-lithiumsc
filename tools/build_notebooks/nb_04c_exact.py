@@ -107,6 +107,8 @@ if not all(found.values()):
 if found and all(found.values()):
     ENV = gp.Env(params={'WLSACCESSID': found['WLSACCESSID'],
                          'WLSSECRET': found['WLSSECRET'],
+                         # int(), not the raw value: Colab's userdata.get()
+                         # returns strings, and a string LICENSEID fails quietly
                          'LICENSEID': int(found['LICENSEID'])})
 else:
     ENV = None       # gp.Model(env=None) means "use the default licence"
@@ -582,9 +584,13 @@ academic licence (2026-09-03, 26.9 s).
     C(r'''
 if SMALL:
     print("Section 12 needs the full 13-period model, which does not fit a "
-          "restricted\nlicence as a MIQP: 541 variables against a ~150 cap. Set "
-          "SMALL = False\nwith a licence configured and re-run. The figures in "
-          "the prose below come\nfrom exactly such a run.")
+          "restricted\nlicence as a MIQP: 541 variables against a ~150 cap.\n")
+    print("To run it you need a full licence. Set SMALL = False, and supply one "
+          "as\nthree secrets - in Colab, the key icon in the left sidebar:\n")
+    print("    GRB_WLSACCESSID   GRB_WLSSECRET   GRB_LICENSEID\n")
+    print("Each person supplies their own; the values bind to your account, not "
+          "to\nthis notebook, so a shared notebook never carries a key. The "
+          "figures in\nthe prose below come from exactly such a run.")
 else:
     rows = []
     for first in REGIONS:
