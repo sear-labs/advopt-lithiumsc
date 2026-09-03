@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 # every notebook the builders can produce, in series order
 BUILDERS = {
     "04c": "build_notebooks.nb_04c",
+    "04d": "build_notebooks.nb_04d",
 }
 
 # what the shipped kernel actually ran; keep this matching reality (rule 3)
@@ -74,15 +75,21 @@ def audit(tag: str, cells) -> dict:
     """The Part 10 pre-ship measurements, as numbers rather than impressions."""
     wrap = next((i for i, (k, t) in enumerate(cells)
                  if k == "md" and "Now the streamlined version" in t), len(cells))
-    teaching = [(i, t) for i, (k, t) in enumerate(cells[:wrap]) if k == "code"]
+    code_before_wrap = [(i, t) for i, (k, t) in enumerate(cells[:wrap])
+                        if k == "code"]
+    # A cell marked CARRIED OVER is material another notebook narrates. It is not
+    # this notebook's teaching, so it is exempt from the def and cell-length
+    # rules -- but it is counted, so the exemption cannot be used quietly.
+    carried = [(i, t) for i, t in code_before_wrap if "CARRIED OVER" in t]
+    teaching = [(i, t) for i, t in code_before_wrap if "CARRIED OVER" not in t]
     early_defs = [(i, l) for i, t in teaching
-                  for l in t.splitlines()
-                  if l.startswith("def ") and "CARRIED OVER" not in t]
+                  for l in t.splitlines() if l.startswith("def ")]
     return dict(
         notebook=tag,
         cells=len(cells),
         markdown=sum(1 for k, _ in cells if k == "md"),
         wrap_at=f"{100 * wrap / len(cells):.0f}%",
+        carried_over=len(carried),
         defs_in_teaching=len(early_defs),
         longest_teaching_cell=max((len(t.splitlines()) for _, t in teaching),
                                   default=0),
@@ -138,7 +145,8 @@ def main() -> int:
             print(f"wrote {out.relative_to(ROOT)} ({len(nb.cells)} cells, "
                   f"no outputs - execute it before committing)")
 
-    keys = ["notebook", "cells", "markdown", "wrap_at", "defs_in_teaching",
+    keys = ["notebook", "cells", "markdown", "wrap_at", "carried_over",
+            "defs_in_teaching",
             "longest_teaching_cell", "orphan_code_cells", "predict_prompts",
             "agreement_assert", "blank_markers"]
     width = {k: max(len(k), *(len(str(r[k])) for r in rows)) for k in keys}

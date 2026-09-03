@@ -5,5 +5,11 @@
     "7,612.7 and 5,895.7 - Part 4b's own figures, re-executed 2026-09-03, attributed in the prose as belonging to that notebook",
     "-3,257.565407376 - the recorded output of the deliberate constraint break in section 12.1, which by design does not reproduce in a green run"
   ],
-  "04c_cournot.ipynb": 5
+  "_04d_stackelberg": [
+    "2 x the -9 in $10^{-9}$",
+    "1,248 - a deliberate rounding of 1,247.7 inside a predict-before-you-run prompt",
+    "7,855.43 and 1524.57 - from the recorded 'drop the 2' break in section 16.1, which by design does not reproduce in a green run"
+  ],
+  "04c_cournot.ipynb": 5,
+  "04d_stackelberg.ipynb": 5
 }

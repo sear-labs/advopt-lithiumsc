@@ -231,7 +231,6 @@ breakpoints, which is exactly the interpolation we meant.
 """)
 
     C(r"""
-K = list(range(NBP))
 capex = {}
 for r in REGIONS:
     capex[r] = (gp.quicksum(MU[s, v] * FIXED[s, r] * b[r][s, v] for (s, v) in BUILD[r])

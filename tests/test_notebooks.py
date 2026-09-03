@@ -57,10 +57,22 @@ def test_no_function_definitions_before_the_narration(path):
     The first `def` longer than 8 lines must not sit in the first half of the
     notebook — that is the shape where a student meets the abstraction before the
     thing it abstracts.
+
+    A cell marked `CARRIED OVER` is exempt: it holds material that *another*
+    notebook narrates, so the abstraction is not above the narration of the same
+    material. 04d carries over 04c's supply chain for exactly this reason. The
+    exemption is counted by `tools/build_notebooks/build.py --check` so it cannot
+    be used quietly.
+
+    This duplicates `test_builder_audit_passes`, deliberately: that one checks the
+    builder, this one checks the shipped artifact, and it keeps working for a
+    notebook that has no builder.
     """
     nb = nbformat.read(path, as_version=4)
     for i, cell in enumerate(nb.cells):
         if cell.cell_type != "code":
+            continue
+        if "CARRIED OVER" in "".join(cell.source):
             continue
         lines = "".join(cell.source).splitlines()
         for j, line in enumerate(lines):

@@ -467,7 +467,8 @@ NBP = 9                # breakpoints on the capex mesh
 PANELS = 400           # trapezoid panels per breakpoint
 
 _bc = -math.log2(1 - LR_CAPEX)
-QBP = [Q_START + Q_ADD * k / (NBP - 1) for k in range(NBP)]
+K = list(range(NBP))                     # the breakpoint index the model sums over
+QBP = [Q_START + Q_ADD * k / (NBP - 1) for k in K]
 
 CBP = []
 for q in QBP:
