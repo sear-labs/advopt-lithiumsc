@@ -303,7 +303,7 @@ half-building it twice.
 | # | notebooks | module built |
 |---|---|---|
 | 1 | **4e + 4d** — **done 2026-09-03** | `mpec.py` (`stackelberg`, `follower_qp`, `follower_marginal_cost`, `follower_legacy` — all three shared ones byte-identical across 4d and 4e) and `policy.py` (the three schedules as builders, plus `welfare`). 4e's policy args were already in `regions.py` from Phase 1. |
-| 2 | 4ab + 4c-exact — **4ab done 2026-09-03** | `games.py` extended: `best_response_fixed_price`, `iterate_fixed_price` (4ab), `best_response_miqp`, `cournot_iterate_miqp` (4c-exact). All four exist in exactly one version each; `add_region` is byte-identical across 4ab/4c/4c-exact/4d. |
+| 2 | 4ab + 4c-exact — **done 2026-09-03** | `games.py` extended: `best_response_fixed_price`, `iterate_fixed_price` (4ab), `best_response_miqp`, `cournot_iterate_miqp` (4c-exact). All four exist in exactly one version each; `add_region` is byte-identical across 4ab/4c/4c-exact/4d. |
 | 3 | 1 + 2 + 5 | `core.py`: `build` ×3, `build_plan` ×2, `capex_pv_multiplier` ×2, `learning_breakpoints` ×2 |
 | 4 | 2b + 2c | `stochastic.py`: `extensive_form` ×2, `subproblem` ×2, `ph`, `lshaped`, CVaR |
 | 5 | 3 + 3b | `network.py` core; `curves.py` already carries 3b's tier arithmetic |

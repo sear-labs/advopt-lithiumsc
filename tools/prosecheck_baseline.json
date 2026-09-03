@@ -7,18 +7,22 @@
   ],
   "_04d_stackelberg": [
     "2 x the -9 in $10^{-9}$",
-    "1,248 - a deliberate rounding of 1,247.7 inside a predict-before-you-run prompt",
-    "7,855.43 and 1524.57 - from the recorded 'drop the 2' break in section 16.1, which by design does not reproduce in a green run"
+    "1,248 - a deliberate rounding of 1,247.7 inside a predict-before-you-run prompt"
   ],
   "_04e_policy": [
-    "2 x the -9 in $10^{-9}$",
-    "1,038.4 and 8,794.9 - the answer the LOOSE 1% MIP gap returned on the tariff-10 case, recorded in section 12 to show why the gap was tightened. By design these no longer reproduce."
+    "2 x the -9 in $10^{-9}$"
   ],
   "_04ab_planner_and_game": [
     "2 x the -9 in $10^{-9}$ (an exponent, not a result)"
   ],
+  "_04c_exact_miqp": [
+    "2,000 - the free licence's LINEAR variable cap, a documented constant",
+    "37 - the horizon of the SMALL=False configuration, which the shipped run does not use",
+    "9 figures in the section 12 table and prose - from a recorded SMALL=False run on an academic licence (2026-09-03). By design they do not reproduce at the shipped default."
+  ],
   "04c_cournot.ipynb": 5,
-  "04d_stackelberg.ipynb": 5,
-  "04e_policy.ipynb": 4,
-  "04ab_planner_and_game.ipynb": 2
+  "04d_stackelberg.ipynb": 3,
+  "04e_policy.ipynb": 2,
+  "04ab_planner_and_game.ipynb": 2,
+  "04c_exact_miqp.ipynb": 11
 }

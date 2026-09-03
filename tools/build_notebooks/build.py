@@ -36,6 +36,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 BUILDERS = {
     "04ab": "build_notebooks.nb_04ab",
     "04c": "build_notebooks.nb_04c",
+    "04c_exact": "build_notebooks.nb_04c_exact",
     "04d": "build_notebooks.nb_04d",
     "04e": "build_notebooks.nb_04e",
 }

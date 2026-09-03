@@ -19,6 +19,12 @@ below emits *narrated cells that build things by hand*; the models live in
 """
 
 
+DEFAULT_HORIZON_NOTE = """\
+A 37-year horizon at annual resolution would be 37 copies of every decision. Instead the horizon is
+chopped into **13 periods of increasing length** — six 1-year periods while the interesting things
+happen, then 3-, 5- and finally 9-year blocks."""
+
+
 def _cells():
     out = []
 
@@ -39,7 +45,8 @@ def _sub(text, **numbers):
     """
     for name, value in numbers.items():
         text = text.replace(f"@{name.upper()}@", str(value))
-    left = [m for m in ("@AGREE@", "@CHAIN@", "@REVENUE@", "@TIERS@", "@TIERED@")
+    left = [m for m in ("@AGREE@", "@CHAIN@", "@REVENUE@", "@TIERS@", "@TIERED@",
+                       "@BLOCKS@", "@HORIZON_NOTE@")
             if m in text]
     if left:
         raise ValueError(f"unfilled section placeholders {left} in a shared cell")
@@ -251,7 +258,9 @@ print(f"OPEX['PROC', 'R2'] is currently {OPEX['PROC', 'R2']}")
     return [(k, _sub(t, agree=agree)) for k, t in out]
 
 
-def structure_section(agree=12, chain=5):
+def structure_section(agree=12, chain=5,
+                      blocks="[(6, 1), (4, 3), (2, 5), (1, 9)]",
+                      horizon_note=DEFAULT_HORIZON_NOTE):
     """Section 3: everything derived from the tables plus the horizon knobs."""
     out, M, C = _cells()
     M(r"""
@@ -264,15 +273,14 @@ is what proves the two derivations agree.
 
 ### 3.1 Time: variable-length periods
 
-A 37-year horizon at annual resolution would be 37 copies of every decision. Instead the horizon is
-chopped into **13 periods of increasing length** — six 1-year periods while the interesting things
-happen, then 3-, 5- and finally 9-year blocks. `OMEGA[p]` is the sum of discount factors for the
+@HORIZON_NOTE@ `OMEGA[p]` is the sum of discount factors for the
 years inside period `p`, so a long late period is correctly worth less per year *and* covers more
-years.
+years. The cell prints the block structure it actually built, so you can check it against whatever
+`BLOCKS` says rather than against this paragraph.
 """)
 
     C(r"""
-BLOCKS = [(6, 1), (4, 3), (2, 5), (1, 9)]   # (how many periods, how many years each)
+BLOCKS = @BLOCKS@   # (how many periods, how many years each)
 DR = 0.05                                    # discount rate
 
 LEN, START = [], []
@@ -432,7 +440,8 @@ for k, v in TRANSPORT.items():
     print(f"  {str(k):14s} {v:4.1f}")
 print(f"\nPEN_DISPOSE = {PEN_DISPOSE}  <- watch this one: section 10 shows it never binds")
 """)
-    return [(k, _sub(t, agree=agree, chain=chain)) for k, t in out]
+    return [(k, _sub(t, agree=agree, chain=chain, blocks=blocks,
+                     horizon_note=horizon_note)) for k, t in out]
 
 
 def capex_curve_section(chain=5, revenue=7):

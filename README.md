@@ -43,6 +43,7 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 |---|---|---|
 | `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
+| `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
 | `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
 | `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb) |
 
@@ -50,7 +51,7 @@ The badge is a one-click path: it clones this repo, `pip install -e .`, and runs
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
 notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
 
-The other ten notebooks are still at the repository root in their pre-migration form
+The other nine notebooks are still at the repository root in their pre-migration form
 (`Part0_Concepts_Guide.ipynb` and friends) and are migrated in Phase 2 of `PLAN.md`.
 
 ---
@@ -77,6 +78,7 @@ src/lithium/              the streamlined track
 notebooks/                the teaching track
   04ab_planner_and_game.ipynb  the planner and the first game, built by hand
   04c_cournot.ipynb         built by hand, narrated, ends in the agreement assertion
+  04c_exact_miqp.ipynb      the exact MIQP; SMALL=True fits the free licence
   04d_stackelberg.ipynb     the MPEC by hand; carries 04c's chain over, marked
   04e_policy.ipynb          the three levers by hand; carries 04c and 04d over, marked
 
@@ -134,14 +136,20 @@ the two limits bind on different models, so both matter:
 | Part 4c best response | MILP | 906 vars | ~2,000 |
 | Part 4d MPEC | MILP | 1,129 vars, 274 binary | ~2,000 |
 | Part 4d follower check | **QP** | 27 vars, 26 quadratic terms | ~150 |
+| Part 4c-exact, `SMALL = True` | **MIQP** | 50 vars, 6 quadratic terms | ~150 |
+| Part 4c-exact, `SMALL = False` | **MIQP** | 541 vars, 26 quadratic terms | ~150 — **does not fit** |
 
 That first limit is why `games.best_response_cournot` piecewise-linearises the quadratic revenue
 instead of handing Gurobi a MIQP, and why the MPEC discretises the leader's quantity rather than
 keeping the bilinear term. The second is why `mpec.follower_qp` — the only genuine quadratic model
 in the migrated set — stays a 27-variable check rather than growing into the follower's full chain.
 
-`Part4c_exact_MIQP.ipynb` is the one notebook that genuinely needs the quadratic form at scale, and
-it ships with `SMALL = True` by default. It is migrated in Phase 2 group 2.
+`notebooks/04c_exact_miqp.ipynb` is the one notebook that genuinely needs the quadratic form, and it
+ships with `SMALL = True` by default — at which size it needs no licence at all. Its section 12 runs
+at full scale for anyone who configures one via `GRB_WLSACCESSID` / `GRB_WLSSECRET` /
+`GRB_LICENSEID` or a Colab secret, and prints an explanation instead of failing for everyone else.
+**No notebook in this repository requires a credential**, and `tools/credscan.py` checks in CI that
+none contains one.
 
 **`gurobi.lic` is never committed.** It carries a live WLS secret and is gitignored as both
 `gurobi.lic` and `*.lic`. Verify with `git check-ignore -v gurobi.lic` before any `git add` here.

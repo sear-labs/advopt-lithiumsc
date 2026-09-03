@@ -81,8 +81,11 @@ def check(path: Path):
         for raw, val in numbers(src):
             # a prose figure may be rounded, scaled, or a percentage of a printed
             # fraction, so accept a family of readings before flagging
+            # A prose figure may be rounded, scaled, or written as a magnitude
+            # with a Unicode minus the extractor cannot see, so try |val| too.
             cands = {round(val, 6), round(val, 1), round(val, 0),
-                     round(val / 100, 6), round(val * 100, 6)}
+                     round(val / 100, 6), round(val * 100, 6),
+                     round(-val, 6), round(-val, 1), round(-val, 0)}
             hit = any(abs(c - o) < max(0.06, abs(o) * 2e-4)
                       for c in cands for o in out_nums)
             if not hit and round(val, 6) in code_nums:
