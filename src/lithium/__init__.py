@@ -20,7 +20,11 @@ from .curves import (capex_breakpoints, capex_cum_multiplier,
 from .games import (best_response_cournot, cournot_iterate, inverse_demand,
                     joint_profit_max, market_outcome)
 from .instance import Instance, load_instance, read_tables
+from .mpec import (follower_legacy, follower_marginal_cost, follower_qp,
+                   stackelberg)
 from .planner import solve_planner
+from .policy import (local_content_schedule, quota_schedule, tariff_schedule,
+                     welfare)
 from .regions import add_region
 from .structure import Structure, build_structure
 
@@ -32,6 +36,8 @@ __all__ = [
     "capex_unit_multiplier", "capex_cum_multiplier", "capex_breakpoints",
     "revenue_breakpoints", "opex_tiers",
     "add_region", "solve_planner",
+    "stackelberg", "follower_qp", "follower_marginal_cost", "follower_legacy",
+    "tariff_schedule", "quota_schedule", "local_content_schedule", "welfare",
     "inverse_demand", "best_response_cournot", "cournot_iterate",
     "joint_profit_max", "market_outcome",
     "__version__",
