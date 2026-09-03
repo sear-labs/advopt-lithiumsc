@@ -959,12 +959,275 @@ def run_02c(ctx):
     return dict(table=table, lam=lam_sweep, alpha=a_sweep)
 
 
+# ==========================================================================
+# Parts 3 and 3b share a FOURTH instance: the network-core chain. Same three
+# stages and two regions as Part 4, but one planner rather than two firms,
+# arcs at every stage rather than finished goods only, and symmetric costs.
+# See src/lithium/netcore.py for the full comparison.
+
+# ---- knobs, Parts 3 and 3b -----------------------------------------------
+NC_DR, NC_LIFE = 0.05, 25
+NC_CAP_MIN, NC_CAP_MAX = 60.0, 260.0
+NC_LEGACY_BYR, NC_ETA_FLOOR = -8, 0.60
+NC_TAU_OWN, NC_TAU_CROSS = 0.5, 2.0
+NC_PEN_SHORT = 90.0
+NC_LEARN_STAGES = ("PROC", "MFG")
+NC_PANELS = 600     # trapezoid panels; the notebooks use 600, the package 400
+# Part 3: a 15-period mesh over 39 years, and a steeper capex curve
+P3_BLOCKS = [(8, 1), (4, 3), (2, 5), (1, 9)]
+P3_LR_CAPEX, P3_Q_START, P3_Q_ADD, P3_FLOOR, P3_NBP = 0.20, 400.0, 1000.0, 0.55, 9
+# Part 3b: 13 periods over 37 years, a gentler capex curve, plus Channel B
+P3B_BLOCKS = [(6, 1), (4, 3), (2, 5), (1, 9)]
+P3B_LR_CAPEX, P3B_FLOOR = 0.15, 0.60
+P3B_LR_OPEX, P3B_OPEX_FLOOR, P3B_LAG, P3B_TIERS = 0.18, 0.65, 3, 3
+P3B_PEN_DISPOSE, P3B_PEN_DEVIATE, P3B_PHASE_IN = 12.0, 35.0, 6
+P3B_DISPOSAL_PENS = [12.0, 6.0, 3.0, 1.0, 0.0]
+P3B_LR_SWEEP = [(0.18, 0.65), (0.35, 0.25), (0.55, 0.25)]
+P3B_LCR_LEVELS = [0.0, 60.0, 110.0, 160.0]
+# 1e-6: both notebooks difference variants against each other, and Part 3b's
+# capacity variant stops at a different incumbent at 0.005 (45,547.7 vs
+# 45,546.0) - invisible against the gap, larger than several measured effects.
+MIPGAP_NC = 1e-6
+
+
+def setup_netcore(source):
+    """The network-core instance, shared by Parts 3 and 3b."""
+    inst = L.load_netcore_instance(source)
+    print(f"network core: {len(inst.stages)} stages x {len(inst.regions)} regions")
+    return dict(inst=inst)
+
+
+def _nc_struct(inst, blocks):
+    return L.build_netcore_structure(
+        inst, blocks=blocks, dr=NC_DR, life=NC_LIFE, cap_min=NC_CAP_MIN,
+        cap_max=NC_CAP_MAX, legacy_byr=NC_LEGACY_BYR, eta_floor=NC_ETA_FLOOR,
+        transport_own=NC_TAU_OWN, transport_cross=NC_TAU_CROSS)
+
+
+def _nc_curve(inst, lr, floor, nbp=P3_NBP, q_start=P3_Q_START, q_add=P3_Q_ADD):
+    """The capex curve in MONEY: lithium.curves' multiplier times the mean
+    unit cost of the learning stages. Not reimplemented here - the notebooks'
+    hand-written versions were verified identical to curves' during migration."""
+    u0 = sum(inst.unit[s] for s in NC_LEARN_STAGES) / len(NC_LEARN_STAGES)
+    QBP, CBPm = L.capex_breakpoints(q_start, q_add, nbp, lr, floor,
+                                    panels=NC_PANELS)
+    return QBP, [u0 * c for c in CBPm]
+
+
+# ==========================================================================
+def run_03(ctx):
+    """Part 3 - the network-core MILP, and four variants that share one plan."""
+    inst = ctx["nc"]["inst"]
+    st = _nc_struct(inst, P3_BLOCKS)
+    curve = _nc_curve(inst, P3_LR_CAPEX, P3_FLOOR)
+    print(f"\n=== 03: network-core MILP ({len(st.P)} periods over "
+          f"{st.HORIZON} years) ===")
+
+    rows, plans = [], {}
+    for cm in ("annualized", "lumpsum"):
+        for lm in ("capacity", "none"):
+            r = L.solve_netcore(st, learning=lm, capex_mode=cm,
+                                capex_curve=curve,
+                                learn_stages=NC_LEARN_STAGES,
+                                allow_dispose=False, pen_short=NC_PEN_SHORT,
+                                mipgap=MIPGAP_NC)
+            assert r["obj"] is not None, f"{cm}/{lm} found no solution"
+            assert r["short"] < 1e-6, f"{cm}/{lm} leaves demand unmet"
+            label = f"capex={cm}, learning={lm}"
+            plans[label] = tuple(sorted(r["plan"].items()))
+            rows.append(dict(variant=label, objective=round(r["obj"], 1),
+                             builds=r["builds"], capacity=r["capacity"],
+                             first_year=min(r["build_years"]),
+                             unmet=round(r["short"], 4)))
+    variants = _show("03_variants", pd.DataFrame(rows))
+
+    # the finding: four variants, one decision
+    n_distinct = len(set(plans.values()))
+    assert n_distinct == 1, (
+        f"{n_distinct} distinct build plans among Part 3's four variants; the "
+        f"notebook's central claim is that all four agree on the decision")
+    ann = variants.loc[variants.variant == "capex=annualized, learning=capacity",
+                       "objective"].iloc[0]
+    lump = variants.loc[variants.variant == "capex=lumpsum, learning=capacity",
+                        "objective"].iloc[0]
+    none_ = variants.loc[variants.variant == "capex=annualized, learning=none",
+                         "objective"].iloc[0]
+    print(f"\nDISTINCT BUILD PLANS among the four variants: {n_distinct}")
+    print(f"lump-sum costs {100 * (lump / ann - 1):+.3f}% and changes no decision; "
+          f"learning saves {100 * (1 - ann / none_):.3f}%")
+
+    # the plan sits on the yield chain, and the SOS2 mesh is doing work
+    base = L.solve_netcore(st, learning="capacity", capex_curve=curve,
+                           learn_stages=NC_LEARN_STAGES, allow_dispose=False,
+                           pen_short=NC_PEN_SHORT, mipgap=MIPGAP_NC)
+    m = base["model"]
+    interp = sum(1 for p in st.P
+                 if sum(1 for k in m._K if m._lam[p, k].X > 1e-6) > 1)
+    for p in st.P:
+        ks = sorted(k for k in m._K if m._lam[p, k].X > 1e-6)
+        assert len(ks) <= 1 or (len(ks) == 2 and ks[1] == ks[0] + 1), (
+            f"period {p} used non-adjacent breakpoints; SOS2 is not binding")
+    maxq = max(m._Q[p].X for p in st.P)
+    assert maxq < curve[0][-1] - 1e-6, \
+        f"the solution reached the top of the learning mesh ({maxq:.1f})"
+    print(f"SOS2: {interp} of {len(st.P)} periods interpolate, adjacency holds, "
+          f"peak Q {maxq:.1f} against a mesh top of {curve[0][-1]:.0f}")
+
+    plan = _show("03_plan", pd.DataFrame(
+        [dict(stage=s, region=r, period=v, year=st.START[v], size=round(x, 2))
+         for (s, r, v), x in sorted(base["plan"].items(),
+                                    key=lambda kv: st.START[kv[0][2]])]))
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(variants.variant, variants.objective, color=[BLUE, ORANGE, GREEN, RED])
+    ax.set_ylim(variants.objective.min() * 0.97, variants.objective.max() * 1.01)
+    ax.set_ylabel("objective")
+    ax.set_title("Part 3: four variants, one build plan")
+    ax.tick_params(axis="x", rotation=20, labelsize=8)
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "03_variants.png", dpi=150)
+    plt.close(fig)
+    return dict(variants=variants, plan=plan, base=base)
+
+
+# ==========================================================================
+def run_03b(ctx):
+    """Part 3b - two learning channels, separable, and neither moves the plan."""
+    inst = ctx["nc"]["inst"]
+    st = _nc_struct(inst, P3B_BLOCKS)
+    curve = _nc_curve(inst, P3B_LR_CAPEX, P3B_FLOOR)
+    kw = dict(capex_curve=curve, learn_stages=NC_LEARN_STAGES,
+              learn_scope="regional", n_tiers=P3B_TIERS, lag_years=P3B_LAG,
+              pen_short=NC_PEN_SHORT, pen_dispose=P3B_PEN_DISPOSE,
+              pen_deviate=P3B_PEN_DEVIATE, allow_dispose=True,
+              mipgap=MIPGAP_NC)
+    print(f"\n=== 03b: production learning ({len(st.P)} periods over "
+          f"{st.HORIZON} years) ===")
+
+    # `kw` already carries n_tiers; calibrate_tiers takes it as its own argument
+    _cal_kw = {k: v for k, v in kw.items() if k != "n_tiers"}
+    (tq, tm), cal_obj, prod = L.calibrate_tiers(
+        st, n_tiers=P3B_TIERS, lr_opex=P3B_LR_OPEX, opex_floor=P3B_OPEX_FLOOR,
+        **_cal_kw)
+    print(f"calibration (no learning) {cal_obj:,.4f}")
+    print(f"  tier thresholds { {k: [round(x, 1) for x in v] for k, v in tq.items()} }")
+    assert all(tm[s] == sorted(tm[s], reverse=True) for s in inst.stages), \
+        "a later tier is dearer than an earlier one"
+
+    rows, res, plans = [], {}, {}
+    for lm in ("none", "capacity", "production", "both"):
+        r = L.solve_netcore(st, learning=lm, tiers=(tq, tm), **kw)
+        assert r["obj"] is not None, f"learning={lm} found no solution"
+        res[lm] = r
+        plans[lm] = tuple(sorted(r["plan"].items()))
+        rows.append(dict(learning=lm, objective=round(r["obj"], 1),
+                         capex=round(r["components"]["capex"], 1),
+                         opex=round(r["components"]["operate"], 1),
+                         builds=r["builds"], capacity=r["capacity"],
+                         disposal=round(r["dispose"], 2),
+                         build_years=str(r["build_years"])))
+    variants = _show("03b_learning_variants", pd.DataFrame(rows))
+
+    # the channels are separable: each touches its own cost term and no other
+    cap = {lm: res[lm]["components"]["capex"] for lm in res}
+    opx = {lm: res[lm]["components"]["operate"] for lm in res}
+    assert abs(cap["production"] - cap["none"]) < 1e-6, (
+        "production learning moved capex; Channel B is supposed to touch opex only")
+    assert abs(opx["both"] - opx["production"]) < 1e-6, (
+        "adding Channel A moved Channel B's opex; the channels are interfering")
+    print(f"\nchannels are separable: capex {cap['none']:.4f} = "
+          f"{cap['production']:.4f}, opex {opx['production']:.4f} = {opx['both']:.4f}")
+    print(f"Channel A takes {100 * (1 - cap['capacity'] / cap['none']):.2f}% off capex; "
+          f"Channel B takes {100 * (1 - opx['production'] / opx['none']):.2f}% off opex")
+
+    # and neither moves the decision much
+    n_distinct = len(set(plans.values()))
+    assert plans["none"] == plans["production"] == plans["both"], (
+        "production learning changed the build plan; Part 3b says it does not")
+    print(f"DISTINCT BUILD PLANS among the four: {n_distinct} - only capacity "
+          f"learning moves anything")
+
+    util = _show("03b_utilization", pd.DataFrame(
+        [dict(node=f"{s}/{r}",
+              none=round(L.utilization(st, res["none"]["model"])[s, r], 1),
+              production=round(L.utilization(st, res["production"]["model"])[s, r], 1))
+         for (s, r) in st.nodes]))
+
+    # tier activation must be monotone: a cumulative driver cannot decrease
+    mz = res["production"]["model"]
+    paths = []
+    for (s, rk) in mz._scope:
+        path = [next(j for j in range(P3B_TIERS) if mz._z[s, rk, p, j].X > 0.5)
+                for p in st.P]
+        assert path == sorted(path), f"{s}/{rk} went backwards through the tiers"
+        paths.append(dict(stage=s, scope=rk, tier_by_period=str(path)))
+    _show("03b_tier_activation", pd.DataFrame(paths))
+
+    # pump-and-dump: never worth it, even free and even at a 55% rate
+    rows = []
+    for pen in P3B_DISPOSAL_PENS:
+        r = L.solve_netcore(st, learning="production", tiers=(tq, tm),
+                            **{**kw, "pen_dispose": pen})
+        rows.append(dict(disposal_penalty=pen, objective=round(r["obj"], 1),
+                         disposal_units=round(r["dispose"], 2)))
+    for lr, floor in P3B_LR_SWEEP:
+        tm2 = {s: [max(floor, (1 - lr) ** j) for j in range(P3B_TIERS)]
+               for s in inst.stages}
+        r = L.solve_netcore(st, learning="production", tiers=(tq, tm2),
+                            **{**kw, "pen_dispose": 0.0})
+        rows.append(dict(disposal_penalty=f"0.0 (LR={lr})",
+                         objective=round(r["obj"], 1),
+                         disposal_units=round(r["dispose"], 2)))
+    dump = _show("03b_pump_and_dump", pd.DataFrame(rows))
+    assert (dump.disposal_units < 1e-6).all(), (
+        "the planner disposed of product to learn faster; Part 3b's conclusion "
+        "is that it never does, so the prose needs rewriting")
+    print("\nzero disposal at every penalty INCLUDING free, and at a 55% rate")
+
+    # the one lever that does force overproduction
+    rows = []
+    for level in P3B_LCR_LEVELS:
+        r = L.solve_netcore(st, learning="production", tiers=(tq, tm),
+                            tier_min=L.tier_minimums(st, level,
+                                                     phase_in=P3B_PHASE_IN), **kw)
+        rows.append(dict(min_throughput=level, objective=round(r["obj"], 1),
+                         undersupply=round(r["deviate"], 2),
+                         disposal=round(r["dispose"], 2), builds=r["builds"]))
+    lcr = _show("03b_local_content", pd.DataFrame(rows))
+    assert lcr.disposal.iloc[-1] > 1, (
+        "the strictest local-content floor forced no disposal; that is the only "
+        "place the disposal mechanism binds, so Part 3b's section 12 has gone")
+    print(f"a local-content floor of {lcr.min_throughput.iloc[-1]:.0f} forces "
+          f"{lcr.disposal.iloc[-1]:.1f} units of disposal and costs "
+          f"{100 * (lcr.objective.iloc[-1] / lcr.objective.iloc[0] - 1):+.0f}%")
+
+    fig, ax = plt.subplots(1, 2, figsize=(11.5, 4))
+    ax[0].bar(variants.learning, variants.capex, color=BLUE, label="capex")
+    ax[0].bar(variants.learning, variants.opex, bottom=variants.capex,
+              color=ORANGE, label="opex")
+    ax[0].set_ylabel("cost")
+    ax[0].set_title("Part 3b: the two channels hit different terms")
+    ax[0].legend()
+    ax[0].grid(axis="y", alpha=0.3)
+    ax[1].plot(lcr.min_throughput, lcr.objective, "o-", color=RED, lw=2)
+    ax[1].set_xlabel("local-content floor")
+    ax[1].set_ylabel("objective")
+    ax[1].set_title("cheap until it exceeds what the chain would do anyway")
+    ax[1].grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "03b_channels.png", dpi=150)
+    plt.close(fig)
+    return dict(variants=variants, util=util, dump=dump, lcr=lcr)
+
+
 # Sections are grouped by which setup they need, so `--only 02` never pays for
 # the Part 4 planner calibration and `--only 4c` never loads the network.
 NET_SECTIONS = {"01": run_01, "02": run_02}
 TS_SECTIONS = {"02b": run_02b, "02c": run_02c}
+NC_SECTIONS = {"03": run_03, "03b": run_03b}
 CHAIN_SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
-SECTIONS = {**NET_SECTIONS, **TS_SECTIONS, **CHAIN_SECTIONS}
+SECTIONS = {**NET_SECTIONS, **TS_SECTIONS, **NC_SECTIONS, **CHAIN_SECTIONS}
 
 
 def main() -> None:
@@ -1005,6 +1268,8 @@ def main() -> None:
         ctx["net"] = setup_network(source, NET_T)
     if any(n in TS_SECTIONS for n in wanted):
         ctx["ts"] = setup_twostage(source)
+    if any(n in NC_SECTIONS for n in wanted):
+        ctx["nc"] = setup_netcore(source)
     if any(n in CHAIN_SECTIONS for n in wanted):
         ctx.update(setup(source, max_iter=6 if args.quick else 16))
     for name in wanted:

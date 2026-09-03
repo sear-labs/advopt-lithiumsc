@@ -1,0 +1,7 @@
+stage,region,legacy_cap,legacy_ret
+MINE,R1,200,9
+MINE,R2,180,14
+PROC,R1,170,12
+PROC,R2,150,19
+MFG,R1,130,16
+MFG,R2,120,24

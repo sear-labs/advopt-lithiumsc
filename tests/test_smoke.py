@@ -605,6 +605,168 @@ def test_scenario_generators_are_reproducible(ts):
         assert p == 1 / 8 and set(d) == set(st.regions)
 
 
+# --------------------------------------------------------------------------
+# Parts 3 and 3b: the network-core chain
+
+
+@pytest.fixture(scope="module")
+def nc():
+    inst = L.load_netcore_instance(ROOT / "data" / "raw")
+    # a coarse mesh: the theory does not need 15 periods and the tests are run
+    # on every commit
+    st = L.build_netcore_structure(inst, blocks=[(3, 1), (2, 3), (1, 9)])
+    u0 = sum(inst.unit[s] for s in ("PROC", "MFG")) / 2
+    QBP, CBPm = L.capex_breakpoints(400.0, 1000.0, 9, 0.20, 0.55, panels=600)
+    return dict(inst=inst, st=st, curve=(QBP, [u0 * c for c in CBPm]))
+
+
+def test_netcore_instance_shares_efficiency_with_part_4():
+    """`efficiency.csv` is one table read by two instances, not two copies."""
+    nc_inst = L.load_netcore_instance(ROOT / "data" / "raw")
+    p4 = L.load_instance(ROOT / "data" / "raw")
+    for s in nc_inst.stages:
+        assert nc_inst.eta_ceil[s] == p4.eta_ceil[s]
+        assert nc_inst.alpha[s] == p4.alpha[s]
+        assert nc_inst.delta_bar[s] == p4.delta_bar[s]
+
+
+def test_netcore_costs_are_symmetric_across_regions(nc):
+    """Part 3's whole setting: any asymmetry in the answer came from demand,
+    legacy fleets or geography, never from one region being cheaper."""
+    inst = nc["inst"]
+    for s in inst.stages:
+        assert isinstance(inst.fixed[s], float)
+    # the cost tables are keyed by STAGE alone, so symmetry is structural
+    assert set(inst.fixed) == set(inst.stages)
+    assert set(inst.unit) == set(inst.stages)
+    assert set(inst.operate) == set(inst.stages)
+
+
+def test_netcore_legacy_retirement_is_inclusive(nc):
+    """An asset retiring in year 9 still runs in a period starting in year 9.
+
+    Off by one here silently removes capacity, and the model absorbs it as
+    unmet demand rather than failing.
+    """
+    st = nc["st"]
+    for (s, r) in st.nodes:
+        ret = st.inst.legacy_ret[s, r]
+        periods = [p for p in st.P if (s, r, -1, p) in set(st.ACTIVE)]
+        latest = max((st.START[p] for p in periods), default=None)
+        if latest is not None:
+            assert latest <= ret, f"{s}/{r} legacy runs past its retirement year"
+        due = [p for p in st.P if st.START[p] == ret]
+        if due:
+            assert (s, r, -1, due[0]) in set(st.ACTIVE), (
+                f"{s}/{r} legacy is missing from the period starting in its "
+                f"retirement year {ret}; the bound should be inclusive")
+
+
+def test_netcore_yields_stay_between_floor_and_ceiling(nc):
+    st = nc["st"]
+    for s in st.inst.stages:
+        for v in [-1] + st.P:
+            for p in st.P:
+                assert 0.60 - 1e-12 <= st.ETA[s, v, p] <= st.inst.eta_ceil[s] + 1e-12
+
+
+def test_netcore_solves_and_meets_demand(nc):
+    r = L.solve_netcore(nc["st"], learning="capacity", capex_curve=nc["curve"],
+                        allow_dispose=False, pen_short=90.0)
+    assert r["obj"] is not None and r["builds"] > 0
+    assert r["short"] < 1e-6, "demand went unserved despite the penalty"
+
+
+def test_netcore_learning_never_costs_more(nc):
+    """Endogenous learning is a discount that must be earned, but it is still a
+    discount: the same model with it cannot come out dearer."""
+    with_ = L.solve_netcore(nc["st"], learning="capacity",
+                            capex_curve=nc["curve"], allow_dispose=False)
+    without = L.solve_netcore(nc["st"], learning="none",
+                              capex_curve=nc["curve"], allow_dispose=False)
+    assert with_["obj"] <= without["obj"] + 1e-6
+
+
+def test_netcore_sos2_keeps_lambda_adjacent(nc):
+    """The cumulative curve is CONCAVE and this is a minimisation, so without
+    SOS2 the model buys capacity along a chord at a price the curve never
+    offers. Adjacency is the observable symptom that it is enforced."""
+    m = L.build_netcore(nc["st"], learning="capacity", capex_curve=nc["curve"],
+                        allow_dispose=False)
+    m.optimize()
+    assert m.SolCount > 0
+    for p in nc["st"].P:
+        ks = sorted(k for k in m._K if m._lam[p, k].X > 1e-6)
+        assert len(ks) <= 1 or (len(ks) == 2 and ks[1] == ks[0] + 1), \
+            f"period {p} used non-adjacent breakpoints {ks}"
+
+
+def test_netcore_capex_curve_matches_the_shared_one(nc):
+    """Parts 3 and 3b do NOT get a fourth copy of Wright's law."""
+    QBP, CBP = nc["curve"]
+    u0 = sum(nc["inst"].unit[s] for s in ("PROC", "MFG")) / 2
+    for q, c in zip(QBP, CBP):
+        want = u0 * L.capex_cum_multiplier(q, 400.0, 0.20, 0.55, 600)
+        assert abs(c - want) <= 1e-9 * max(abs(want), 1.0)
+    slopes = [(CBP[i + 1] - CBP[i]) / (QBP[i + 1] - QBP[i])
+              for i in range(len(QBP) - 1)]
+    assert all(slopes[i] >= slopes[i + 1] - 1e-9 for i in range(len(slopes) - 1)), \
+        "the cumulative capex curve is not concave, so SOS2 is the wrong tool"
+
+
+def test_netcore_learning_channels_are_separable(nc):
+    """Part 3b's structural check: Channel A moves capex and Channel B moves
+    opex, and neither touches the other's term."""
+    st, curve = nc["st"], nc["curve"]
+    kw = dict(capex_curve=curve, n_tiers=3, lag_years=3, allow_dispose=True)
+    (tq, tm), _obj, _prod = L.calibrate_tiers(
+        st, n_tiers=3, lr_opex=0.18, opex_floor=0.65,
+        **{k: v for k, v in kw.items() if k != "n_tiers"})
+    res = {lm: L.solve_netcore(st, learning=lm, tiers=(tq, tm), **kw)
+           for lm in ("none", "capacity", "production", "both")}
+    cap = {k: v["components"]["capex"] for k, v in res.items()}
+    opx = {k: v["components"]["operate"] for k, v in res.items()}
+    assert abs(cap["production"] - cap["none"]) < 1e-6, \
+        "production learning moved capex; it is supposed to touch opex only"
+    assert abs(opx["both"] - opx["production"]) < 1e-6, \
+        "capacity learning moved Channel B's opex; the channels interfere"
+
+
+def test_netcore_tier_activation_is_monotone(nc):
+    """Cumulative production cannot decrease, so a node cannot fall back a tier.
+
+    If it does, a big-M is the wrong sign or the lag map is wrong -- and the
+    objective would still look plausible.
+    """
+    st, curve = nc["st"], nc["curve"]
+    (tq, tm), _o, _p = L.calibrate_tiers(st, n_tiers=3, lr_opex=0.18,
+                                         opex_floor=0.65, capex_curve=curve,
+                                         lag_years=3, allow_dispose=True)
+    m = L.build_netcore(st, learning="production", tiers=(tq, tm),
+                        capex_curve=curve, n_tiers=3, lag_years=3)
+    m.optimize()
+    assert m.SolCount > 0 and m._z is not None
+    for (s, rk) in m._scope:
+        path = [next(j for j in range(3) if m._z[s, rk, p, j].X > 0.5)
+                for p in st.P]
+        assert path == sorted(path), f"{s}/{rk} went backwards through the tiers"
+
+
+def test_netcore_cumulative_production_is_undiscounted(nc):
+    """A knowledge stock counts units made, not their present value.
+
+    Discounting it would be a category error, and every other sum in the model
+    IS discounted, so it is an easy one to make.
+    """
+    import inspect
+    src = inspect.getsource(L.build_netcore)
+    block = src[src.index("cum_prod"):src.index("cum_prod") + 800]
+    body = src[src.index("cumprod[s, rk, p]"):src.index("name=\"cum_prod\"")]
+    assert "LEN[q]" in body, "cumulative production is not weighted by period length"
+    assert "OMEGA" not in body, \
+        "cumulative production is discounted; a knowledge stock must not be"
+
+
 def test_every_stochastic_entry_point_accepts_a_mipgap():
     """These functions difference expectations 0.01% apart against each other.
 

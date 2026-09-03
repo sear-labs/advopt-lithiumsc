@@ -47,7 +47,8 @@ def _sub(text, **numbers):
         text = text.replace(f"@{name.upper()}@", str(value))
     left = [m for m in ("@AGREE@", "@CHAIN@", "@REVENUE@", "@TIERS@", "@TIERED@",
                        "@BLOCKS@", "@HORIZON_NOTE@", "@MODEL@",
-                       "@HORIZON@", "@YEAR_GRID@")
+                       "@HORIZON@", "@YEAR_GRID@", "@BLOCKS@",
+                       "@REPORT_UNTIL@", "@NPERIODS@")
             if m in text]
     if left:
         raise ValueError(f"unfilled section placeholders {left} in a shared cell")
@@ -931,6 +932,343 @@ print(f"total peak demand across regions can reach "
       f"{sum(DEMAND_BASE.values()) * 1.55:.1f}, so one chain is not obviously enough")
 ''')
     return [(k, _sub(t, agree=agree)) for k, t in out]
+
+
+def netcore_instance_section(agree=15):
+    """Section 2 for Parts 3 and 3b: the network-core instance's four tables."""
+    out, M, C = _cells()
+
+    M(r"""
+## 2. The instance
+
+**This is the fourth instance in the series, and it is the one most easily
+confused with Part 4's**, because it has the same three stages and the same two
+regions. The differences are the whole reason both exist:
+
+| | here (Parts 3, 3b) | Part 4's chain |
+|---|---|---|
+| who decides | one planner, minimising cost | two firms, maximising profit |
+| what crosses regions | anything, at any stage | finished goods only |
+| learning | one industry-wide pool | per firm |
+| price | none; demand must be served | endogenous, or fixed |
+| costs by region | **symmetric** | asymmetric |
+
+The symmetric costs matter. With both regions identical on cost, whatever
+asymmetry appears in the answer came from demand, legacy fleets and geography —
+not from one region simply being cheaper. That makes this the right place to
+study the machinery before Part 4 adds a thumb to the scale.
+
+| file | keyed by | rows |
+|---|---|---|
+| `netcore_stages.csv` | `stage` | 3 |
+| `netcore_nodes.csv` | `(stage, region)` | 6 |
+| `netcore_regions.csv` | `region` | 2 |
+| `efficiency.csv` | `stage` | 3 |
+
+`efficiency.csv` is **the same file Part 4 reads**, not a copy of it. The yield
+model is genuinely shared; the cost tables are not.
+""")
+
+    C(r'''
+DATA = Path("data/raw")
+
+if not (DATA / "netcore_stages.csv").exists():
+    print("!" * 78)
+    print("! data/raw/ was not found, so this notebook is FALLING BACK to generated")
+    print("! numbers. Everything below will run and every figure will render, but the")
+    print("! results are NOT the shipped instance and are NOT an acceptable submission.")
+    print("! Fix: clone the repo (see section 0) or run this notebook from the repo root.")
+    print("!" * 78)
+    DATA = Path("_generated_fallback")
+    DATA.mkdir(exist_ok=True)
+    (DATA / "netcore_stages.csv").write_text(
+        "stage,fixed,unit,operate,lead\nMINE,900.0,7.0,1.2,1\n"
+        "PROC,1500.0,11.0,2.0,2\nMFG,1300.0,9.5,2.4,2\n")
+    (DATA / "netcore_nodes.csv").write_text(
+        "stage,region,legacy_cap,legacy_ret\nMINE,R1,200,9\nMINE,R2,180,14\n"
+        "PROC,R1,170,12\nPROC,R2,150,19\nMFG,R1,130,16\nMFG,R2,120,24\n")
+    (DATA / "netcore_regions.csv").write_text(
+        "region,demand_base,demand_growth\nR1,100.0,0.008\nR2,70.0,0.026\n")
+    (DATA / "efficiency.csv").write_text(
+        "stage,eta_ceil,eta_base,alpha,beta,delta_bar\nMINE,0.92,0.86,0.0,0.0,0.02\n"
+        "PROC,0.95,0.80,0.030,0.010,0.05\nMFG,0.93,0.78,0.025,0.008,0.05\n")
+
+stages_df = pd.read_csv(DATA / "netcore_stages.csv")
+nodes_df = pd.read_csv(DATA / "netcore_nodes.csv")
+regions_df = pd.read_csv(DATA / "netcore_regions.csv")
+eff_df = pd.read_csv(DATA / "efficiency.csv")
+for nm, df in (("netcore_stages", stages_df), ("netcore_nodes", nodes_df),
+               ("netcore_regions", regions_df), ("efficiency", eff_df)):
+    print(f"{nm + '.csv':22s} {len(df)} rows x {len(df.columns)} columns")
+stages_df
+''')
+
+    M(r"""
+A frame shows rows and columns; the model indexes by `stage` and by
+`(stage, region)`. Print the dictionary form so the **key** is explicit rather
+than implied by the layout — every constraint below looks values up by one of
+those two keys, and getting them confused is the most common way to build a
+model that solves and means nothing.
+""")
+
+    C(r'''
+STAGES = tuple(stages_df["stage"])
+REGIONS = tuple(regions_df["region"])
+NODES = [(s, r) for s in STAGES for r in REGIONS]
+ARCS = [(s, a, b) for s in STAGES for a in REGIONS for b in REGIONS]
+
+FIXED = dict(zip(stages_df["stage"], stages_df["fixed"].astype(float)))
+UNIT = dict(zip(stages_df["stage"], stages_df["unit"].astype(float)))
+OPERATE = dict(zip(stages_df["stage"], stages_df["operate"].astype(float)))
+LEAD = dict(zip(stages_df["stage"], stages_df["lead"].astype(int)))
+
+_k = list(zip(nodes_df["stage"], nodes_df["region"]))
+LEGACY_CAP = dict(zip(_k, nodes_df["legacy_cap"].astype(float)))
+LEGACY_RET = dict(zip(_k, nodes_df["legacy_ret"].astype(int)))
+
+DEMAND_BASE = dict(zip(regions_df["region"], regions_df["demand_base"].astype(float)))
+DEMAND_GROWTH = dict(zip(regions_df["region"], regions_df["demand_growth"].astype(float)))
+
+ETA_CEIL = dict(zip(eff_df["stage"], eff_df["eta_ceil"].astype(float)))
+ETA_BASE = dict(zip(eff_df["stage"], eff_df["eta_base"].astype(float)))
+ALPHA = dict(zip(eff_df["stage"], eff_df["alpha"].astype(float)))
+BETA = dict(zip(eff_df["stage"], eff_df["beta"].astype(float)))
+DELTA_BAR = dict(zip(eff_df["stage"], eff_df["delta_bar"].astype(float)))
+
+print(f"{len(NODES)} nodes: {NODES}")
+print(f"{len(ARCS)} arcs, e.g. {ARCS[:3]} ...")
+print(f"\n{'FIXED':12s} {FIXED}")
+print(f"{'UNIT':12s} {UNIT}")
+print(f"{'OPERATE':12s} {OPERATE}")
+print(f"{'LEAD':12s} {LEAD}")
+print(f"{'LEGACY_CAP':12s} {LEGACY_CAP}")
+print(f"{'LEGACY_RET':12s} {LEGACY_RET}")
+
+# Try it: make R2 the cheap region and re-run. Section @AGREE@ stays green,
+# because the package is handed this table rather than re-reading the file.
+# FIXED, UNIT, OPERATE are keyed by STAGE here, so that edit needs the model to
+# index them by (stage, region) first - which is exactly what Part 4 does.
+''')
+
+    M(r"""
+**Every arc exists.** A mine in R1 can feed a processor in R2 and vice versa, at
+every stage. That is the structural difference from Part 4, where each region's
+chain is internally closed and only the finished product is traded, and it is
+why this model has a `flow` variable indexed by `(stage, from, to, period)`
+rather than a single sales variable.
+""")
+    return [(k, _sub(t, agree=agree)) for k, t in out]
+
+
+def netcore_structure_section(agree=15, blocks="[(8, 1), (4, 3), (2, 5), (1, 9)]",
+                              horizon=39, nperiods=15, report_until=30):
+    """Section 3 for Parts 3 and 3b: the knobs and everything derived from them."""
+    out, M, C = _cells()
+
+    M(r"""
+## 3. Time, and the knobs everything hangs off
+
+### Variable-length periods, and why
+
+A 39-year horizon at annual resolution would be 39 periods and a model several
+times the size. But the near years are where the decisions are, and the far
+years are there to stop the model treating the end of the horizon as the end of
+the world. So the mesh is **fine early and coarse late**.
+
+`BLOCKS` is a list of `(how many periods, years in each)`. Everything downstream
+— period starts, discount weights, which vintages are operating when — is
+arithmetic on it, which is why it is a knob and not a table.
+
+**`REPORT_UNTIL` is the other half of the same idea.** The horizon runs past the
+last year anyone reads, so that a facility built in the reporting window still
+captures most of its 25-year life *inside* the model. Without that buffer the
+model refuses to build late, not because building late is bad but because the
+model stops before the asset has paid for itself. Section 16 measures what that
+buffer is worth.
+""")
+
+    C(r'''
+BLOCKS = @BLOCKS@   # (how many periods, years in each)
+DR = 0.05           # discount rate
+LIFE = 25           # asset life, years
+CAP_MIN, CAP_MAX = 60.0, 260.0    # a facility that is built is between these
+LEGACY_BYR = -8     # inherited assets are already 8 years old
+ETA_FLOOR = 0.60    # no vintage is ever worse than this
+REPORT_UNTIL = @REPORT_UNTIL@   # years past this are the cool-down buffer
+
+LEN, START, _y = [], [], 1
+for _count, _length in BLOCKS:
+    for _ in range(_count):
+        LEN.append(_length)
+        START.append(_y)
+        _y += _length
+P = list(range(len(LEN)))
+HORIZON = _y - 1
+YEARS = {p: list(range(START[p], START[p] + LEN[p])) for p in P}
+YEAR_TO_P = {t: p for p in P for t in YEARS[p]}
+
+# OMEGA[p] is the SUM of annual discount factors inside period p, so a
+# per-year cost multiplied by it becomes that period's present value. It is NOT
+# an average: a 9-year period must carry nine years of cost.
+OMEGA = {p: sum(1 / (1 + DR) ** t for t in YEARS[p]) for p in P}
+
+print(f"{len(P)} periods spanning {HORIZON} years; "
+      f"sum of weights = {sum(OMEGA.values()):.3f}")
+print(f"reporting window ends at year {REPORT_UNTIL}; "
+      f"years {REPORT_UNTIL + 1}-{HORIZON} are the cool-down buffer")
+pd.DataFrame([dict(period=p, years=f"{START[p]}-{START[p] + LEN[p] - 1}",
+                   length=LEN[p], omega=round(OMEGA[p], 3)) for p in P])
+''')
+
+    M(r"""
+### 3.1 The capital recovery factor, and charging capex by the year
+
+A facility bought in year $v$ is paid for once but used for `LIFE` years. Charging
+the whole cheque in year $v$ makes late builds look ruinous; charging nothing
+makes them free. The standard fix is to **annuitise**: convert the lump sum into
+an equivalent annual payment with the capital recovery factor, then discount only
+the years that fall inside the horizon.
+
+$$\text{CRF} = \frac{r(1+r)^{L}}{(1+r)^{L}-1}
+\qquad\qquad
+\mu_{s,v} = \text{CRF}\sum_{t=\text{online}}^{\text{online}+L-1}\!\!\!\!
+\frac{\mathbb{1}[t \le T]}{(1+r)^{t}}$$
+
+**`MU` is the coefficient that makes late builds behave sensibly**, and section
+16 compares it against the lump-sum alternative.
+""")
+
+    C(r'''
+CRF = DR * (1 + DR) ** LIFE / ((1 + DR) ** LIFE - 1)
+ONLINE = {(s, p): START[p] + LEAD[s] for s in STAGES for p in P}
+
+MU = {(s, v): CRF * sum(1 / (1 + DR) ** t
+                        for t in range(ONLINE[s, v], ONLINE[s, v] + LIFE)
+                        if t <= HORIZON)
+      for s in STAGES for v in P}
+
+print(f"CRF ({LIFE} yr at {DR:.0%}) = {CRF:.5f}")
+print("MU for PROC by decision period:",
+      {v: round(MU['PROC', v], 3) for v in [0, len(P) // 3, len(P) - 4, len(P) - 1]})
+print("\nMU falls at the end of the horizon because a late build's later years")
+print("fall outside it. That is the truncation the buffer is there to absorb.")
+''')
+
+    M(r"""
+### 3.2 Demand
+
+Each region's demand grows at its own rate. R2 starts smaller and grows faster,
+which is what makes the siting question interesting rather than obvious.
+""")
+
+    C(r'''
+DEMAND = {}
+for r in REGIONS:
+    base, g = DEMAND_BASE[r], DEMAND_GROWTH[r]
+    for p in P:
+        DEMAND[r, p] = sum(base * (1 + g) ** (t - 1) for t in YEARS[p]) / LEN[p]
+
+TRANSPORT_OWN, TRANSPORT_CROSS = 0.5, 2.0
+TRANSPORT = {(a, b): (TRANSPORT_OWN if a == b else TRANSPORT_CROSS)
+             for a in REGIONS for b in REGIONS}
+PEN_SHORT = 90.0     # per unit of unmet final demand
+
+print(f"demand rate, year 1 : { {r: round(DEMAND[r, 0], 1) for r in REGIONS} }")
+print(f"demand rate, year {START[P[-1]]}: "
+      f"{ {r: round(DEMAND[r, P[-1]], 1) for r in REGIONS} }")
+cross = [r for r in REGIONS if DEMAND[r, P[-1]] > DEMAND[REGIONS[0], P[-1]]]
+print(f"\ncrossing regions costs {TRANSPORT_CROSS / TRANSPORT_OWN:.0f}x staying home")
+print(f"unmet demand costs {PEN_SHORT}, which is "
+      f"{PEN_SHORT / max(OPERATE.values()):.0f}x the dearest stage's opex")
+''')
+
+    M(r"""
+### 3.3 Vintage efficiency: two channels, both indexed by vintage
+
+Yield improves for two separate reasons and the model keeps them apart.
+
+- **A later vintage starts better.** The frontier moves at rate $\alpha$ per
+  year, so a facility built in year 20 begins life more efficient than one built
+  in year 1 ever becomes.
+- **An asset improves with age**, at rate $\beta$, but by at most
+  $\bar\delta$ over its whole life. Retrofits help; they do not turn a 1990s
+  plant into a new one.
+
+Both are capped by the stage's ceiling $\bar\eta$ and floored at `ETA_FLOOR`.
+The result is `ETA[stage, vintage, period]` — a yield that depends on **when it
+was built and when it is running**, which is why throughput has to be tracked
+per vintage rather than per node.
+""")
+
+    C(r'''
+VINTAGES = [-1] + P          # -1 is the inherited legacy cohort
+BUILD_YEAR = {v: (LEGACY_BYR if v == -1 else START[v]) for v in VINTAGES}
+
+ETA = {}
+for s in STAGES:
+    for v in VINTAGES:
+        frontier = ETA_CEIL[s] - (ETA_CEIL[s] - ETA_BASE[s]) \
+            * (1 - ALPHA[s]) ** (BUILD_YEAR[v] - 1)
+        frontier = max(ETA_FLOOR, min(frontier, ETA_CEIL[s]))
+        for p in P:
+            age = max(0, START[p] - BUILD_YEAR[v])
+            aged = ETA_CEIL[s] - (ETA_CEIL[s] - frontier) * (1 - BETA[s]) ** age
+            ETA[s, v, p] = max(ETA_FLOOR, min(frontier + DELTA_BAR[s], aged))
+
+# the theory, asserted: a yield is a fraction, never exceeds its ceiling, and a
+# later vintage is never worse than an earlier one in the same period
+for s in STAGES:
+    for p in P:
+        assert all(ETA_FLOOR - 1e-12 <= ETA[s, v, p] <= ETA_CEIL[s] + 1e-12
+                   for v in VINTAGES), f"{s} yield left [floor, ceiling] in period {p}"
+        vs = [v for v in P if v <= p]
+        assert all(ETA[s, vs[i], p] <= ETA[s, vs[i + 1], p] + 1e-12
+                   for i in range(len(vs) - 1)), \
+            f"{s}: a later vintage is worse than an earlier one in period {p}"
+print(f"{len(ETA)} yields, keyed (stage, vintage, period)")
+print("\nPROC yield by vintage and operating period:")
+_show_p = [0, len(P) // 3, 2 * len(P) // 3, len(P) - 1]
+pd.DataFrame({f"vintage {v}": [round(ETA['PROC', v, p], 4) for p in _show_p]
+              for v in [-1, 0, len(P) // 2]},
+             index=[f"yr {START[p]}" for p in _show_p]).T
+''')
+
+    M(r"""
+### 3.4 Which vintages are operating when
+
+A legacy asset runs until its retirement year, **inclusive**. A built asset runs
+from `LEAD` years after its decision, for `LIFE` years. `ACTIVE` is the set of
+`(stage, region, vintage, period)` combinations that exist at all, and `VIN` is
+the same information indexed the way the constraints need it.
+
+Building these sets explicitly, rather than writing `if` conditions inside every
+constraint, is what keeps the model readable — and it means a mistake in the
+timing shows up here as a wrong count rather than as a silently missing
+constraint fifty lines further down.
+""")
+
+    C(r'''
+ACTIVE = [(s, r, v, p)
+          for (s, r) in NODES for v in VINTAGES for p in P
+          if (v == -1 and START[p] <= LEGACY_RET[s, r])
+          or (v >= 0 and ONLINE[s, v] <= START[p] <= ONLINE[s, v] + LIFE - 1)]
+
+VIN = {}
+for (s, r, v, p) in ACTIVE:
+    VIN.setdefault((s, r, p), []).append(v)
+
+# a build decision is only meaningful if the asset comes online inside the horizon
+BUILD = [(s, r, v) for (s, r) in NODES for v in P if ONLINE[s, v] <= HORIZON]
+
+assert len(ACTIVE) > 0 and len(BUILD) > 0, "an empty index set reports success too"
+print(f"{len(ACTIVE)} active (node, vintage, period) triples")
+print(f"{len(BUILD)} candidate build decisions -> {len(BUILD)} binaries")
+print(f"\nlegacy MINE/R1 retires in year {LEGACY_RET['MINE', 'R1']} and is active "
+      f"in {sum(1 for (s, r, v, p) in ACTIVE if (s, r, v) == ('MINE', 'R1', -1))} periods")
+''')
+    return [(k, _sub(t, agree=agree, blocks=blocks, horizon=horizon,
+                     nperiods=nperiods, report_until=report_until))
+            for k, t in out]
 
 
 def network_instance_section(agree=13):

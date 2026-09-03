@@ -44,6 +44,11 @@ from .structure import Structure, build_structure
 # `recourse` and `risk_model` act on a different instance from the
 # same-named things in `stochastic` and `core`, and flattening them would
 # shadow one with the other. See twostage.py's docstring.
+from . import netcore
+from .netcore import (NetCoreInstance, NetCoreStructure, build_netcore,
+                      build_netcore_structure, calibrate_tiers,
+                      load_netcore_instance, netcore_plan, solve_netcore,
+                      tier_minimums, utilization)
 from . import twostage
 from .twostage import (TwoStageInstance, TwoStageStructure,
                        build_twostage_structure, demand_scenarios,
@@ -67,6 +72,10 @@ __all__ = [
     "wait_and_see", "mean_value_stage1", "eval_strategy_by_scenario",
     "strategy_stage1", "perfect_info_by_scenario",
     "three_case_comparison", "ph_three_case",
+    "netcore", "NetCoreInstance", "NetCoreStructure",
+    "load_netcore_instance", "build_netcore_structure", "build_netcore",
+    "solve_netcore", "netcore_plan", "calibrate_tiers", "utilization",
+    "tier_minimums",
     "twostage", "TwoStageInstance", "TwoStageStructure",
     "load_twostage_instance", "build_twostage_structure",
     "demand_scenarios", "shock_scenarios", "lshaped", "risk_model",
