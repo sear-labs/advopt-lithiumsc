@@ -10,6 +10,11 @@
     "1,248 - a deliberate rounding of 1,247.7 inside a predict-before-you-run prompt",
     "7,855.43 and 1524.57 - from the recorded 'drop the 2' break in section 16.1, which by design does not reproduce in a green run"
   ],
+  "_04e_policy": [
+    "2 x the -9 in $10^{-9}$",
+    "1,038.4 and 8,794.9 - the answer the LOOSE 1% MIP gap returned on the tariff-10 case, recorded in section 12 to show why the gap was tightened. By design these no longer reproduce."
+  ],
   "04c_cournot.ipynb": 5,
-  "04d_stackelberg.ipynb": 5
+  "04d_stackelberg.ipynb": 5,
+  "04e_policy.ipynb": 4
 }

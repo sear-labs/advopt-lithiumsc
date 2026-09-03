@@ -54,7 +54,10 @@ TOL, MIPGAP_GAME, MIPGAP_PLAN = 0.5, 1e-3, 0.005
 # Part 4d
 LEADER, FOLLOWER = "R1", "R2"
 BIG_Q, BIG_L, NQ, CAP_ADDER = 1200.0, 400.0, 6, 4.0
-MIPGAP_MPEC = 0.01
+# 1e-3, not 0.01: at 0.01 the tariff-10 deterrence case in 4e stops at a
+# worse incumbent (8,794.87 / qL 1,038.44) than the true optimum
+# (8,816.86 / qL 1,001.71). Every other MPEC case is identical at both.
+MIPGAP_MPEC = 1e-3
 # the sweeps the narrations quote
 TARIFF_LEVELS = [0.0, 2.0, 5.0, 9.0]
 QUOTA_LEVELS = [60.0, 30.0, 10.0]

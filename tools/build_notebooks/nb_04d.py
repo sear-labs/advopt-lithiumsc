@@ -511,7 +511,7 @@ complementarity conditions — the hard part — are section 9.
 """)
 
     C(r'''
-MIPGAP_MPEC = 0.01
+MIPGAP_MPEC = 1e-3   # tight enough that every case below is proven optimal
 
 mm = gp.Model("mpec")
 mm.Params.OutputFlag = 0

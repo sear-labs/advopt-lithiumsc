@@ -25,8 +25,14 @@ pytest -q
 ```
 
 `scripts/run_all.py` writes `results/tables/*.csv` and `results/figures/*.png` and prints the
-headline numbers. It takes about 11 s. `--quick` caps the best-response loop at 6 rounds for
-classroom use; `--data DIR` points it at a different instance directory.
+headline numbers every notebook narration quotes. It takes about 35 s. `--only 4d,4e` runs a
+subset, `--quick` caps the best-response loop at 6 rounds for classroom use, and `--data DIR`
+points it at a different instance directory.
+
+The notebooks are **build outputs**: `tools/build_notebooks/` is their source of truth, and
+`tests/test_notebook_sources.py` asserts regenerating reproduces what shipped. Never hand-edit a
+notebook's cells — edit the builder, run `python tools/build_notebooks/build.py --all`, execute,
+and commit executed. `build.py --check` reports the pre-ship measurements without writing.
 
 Gurobi is required. The free `pip` licence is enough for everything in `notebooks/` — see
 *The licence is the deployment constraint* below.
@@ -36,12 +42,14 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 | Notebook | What it covers | |
 |---|---|---|
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
+| `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
+| `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb) |
 
 The badge is a one-click path: it clones this repo, `pip install -e .`, and runs. No local software
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
 notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
 
-The other thirteen notebooks are still at the repository root in their pre-migration form
+The other eleven notebooks are still at the repository root in their pre-migration form
 (`Part0_Concepts_Guide.ipynb` and friends) and are migrated in Phase 2 of `PLAN.md`.
 
 ---
@@ -61,10 +69,18 @@ src/lithium/              the streamlined track
   regions.py                add_region: one region's chain, policy-instrument superset
   planner.py                the cooperative benchmark
   games.py                  best response, iterated best response, collusion
+  mpec.py                   Stackelberg as a single-level MPEC, and the QP that checks it
+  policy.py                 tariff / quota / local-content schedules, and welfare
   data/                     a copy of data/raw/, shipped as package data
 
 notebooks/                the teaching track
   04c_cournot.ipynb         built by hand, narrated, ends in the agreement assertion
+  04d_stackelberg.ipynb     the MPEC by hand; carries 04c's chain over, marked
+  04e_policy.ipynb          the three levers by hand; carries 04c and 04d over, marked
+
+tools/
+  build_notebooks/          the notebooks' source of truth; build.py generates and audits
+  prosecheck.py             every number in the markdown against the executed outputs
 
 scripts/run_all.py        the one documented entry point
 results/{figures,tables}/  generated; figures are committed on purpose
@@ -108,12 +124,22 @@ two copies are identical.
 ## The licence is the deployment constraint
 
 Gurobi's free `pip` licence allows roughly **2,000 variables for LP/MILP but only about 150 for
-QP/MIQP** — a limit found by probing, not from documentation. Everything in `notebooks/` is a MILP
-and fits comfortably: the Part 4c best response is 906 variables.
+QP/MIQP** — a limit found by probing, not from documentation. Everything in `notebooks/` fits, but
+the two limits bind on different models, so both matter:
 
-That limit is why `games.best_response_cournot` piecewise-linearises the quadratic revenue instead of
-handing Gurobi a MIQP. `Part4c_exact_MIQP.ipynb` is the one notebook that genuinely needs the
-quadratic form, and it ships with `SMALL = True` by default.
+| model | type | size | against a limit of |
+|---|---|---|---|
+| Part 4c best response | MILP | 906 vars | ~2,000 |
+| Part 4d MPEC | MILP | 1,129 vars, 274 binary | ~2,000 |
+| Part 4d follower check | **QP** | 27 vars, 26 quadratic terms | ~150 |
+
+That first limit is why `games.best_response_cournot` piecewise-linearises the quadratic revenue
+instead of handing Gurobi a MIQP, and why the MPEC discretises the leader's quantity rather than
+keeping the bilinear term. The second is why `mpec.follower_qp` — the only genuine quadratic model
+in the migrated set — stays a 27-variable check rather than growing into the follower's full chain.
+
+`Part4c_exact_MIQP.ipynb` is the one notebook that genuinely needs the quadratic form at scale, and
+it ships with `SMALL = True` by default. It is migrated in Phase 2 group 2.
 
 **`gurobi.lic` is never committed.** It carries a live WLS secret and is gitignored as both
 `gurobi.lic` and `*.lic`. Verify with `git check-ignore -v gurobi.lic` before any `git add` here.

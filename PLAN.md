@@ -287,7 +287,7 @@ half-building it twice.
 
 | # | notebooks | module built |
 |---|---|---|
-| 1 | **4e + 4d** | `games.py` extended: `stackelberg` ×2, `follower_legacy` ×2, `follower_marginal_cost` ×2, `follower_qp`. 4e's policy args are already in `regions.py` from Phase 1. |
+| 1 | **4e + 4d** — **done 2026-09-03** | `mpec.py` (`stackelberg`, `follower_qp`, `follower_marginal_cost`, `follower_legacy` — all three shared ones byte-identical across 4d and 4e) and `policy.py` (the three schedules as builders, plus `welfare`). 4e's policy args were already in `regions.py` from Phase 1. |
 | 2 | 4ab + 4c-exact | `best_response_cournot_miqp`, `cournot_iterate_miqp`, behind `SMALL = True` |
 | 3 | 1 + 2 + 5 | `core.py`: `build` ×3, `build_plan` ×2, `capex_pv_multiplier` ×2, `learning_breakpoints` ×2 |
 | 4 | 2b + 2c | `stochastic.py`: `extensive_form` ×2, `subproblem` ×2, `ph`, `lshaped`, CVaR |
@@ -308,6 +308,42 @@ a decision rather than an omission.
 **`notebooks/00_index.ipynb` is built at the end of Phase 2** *(decided
 2026-09-03)*, not now. With one notebook migrated it only duplicates the
 README's table; its value is as the front door over a full set.
+
+#### Group 1, as built (2026-09-03)
+
+`notebooks/04d_stackelberg.ipynb`, 71 cells, and `notebooks/04e_policy.ipynb`,
+67 cells, both shipped executed. Verified against both originals executed
+verbatim before anything was written on top: every comparison at **rel
+0.00e+00**, identical model shape (1129 vars, 1311 constrs, 274 binaries), and
+the embedded KKT block reproducing the direct QP at 3.5e-10.
+
+**The carry-over exemption.** 04d's subject is the MPEC and 04e's is the three
+levers; neither is the supply chain, which 04c narrates. So both carry the chain
+over as a marked wrapper. `build.py --check` counts those cells in their own
+column and exempts them from the def and cell-length rules; everything else still
+applies. Without the exemption the only alternatives were re-narrating twenty
+cells of 04c in each notebook, or letting an unmarked helper sit above the
+narration — the exemption is the honest third option, and it is countable.
+
+**Three defects found and fixed while building, all of the kind Part 6 names:**
+
+- 04d's deterrence counterfactual used the Cournot leader's *total* spread evenly
+  across markets and periods. A different leader — *comparing two things that
+  were not asked the same question*. Now computed from the real schedule.
+- A grid-sweep assertion compared the leader's quantity against the *follower's*
+  Cournot quantity. Meaningless; fixed.
+- **`MIPGAP_MPEC = 0.01` was too loose.** On 4e's tariff-10 case it returned
+  8,794.87 / qL 1,038.44 where the optimum is 8,816.86 / qL 1,001.71. At 1e-3 the
+  solver proves optimality in the same 0.2 s, and every other MPEC in the series
+  is identical at both gaps. Tightened everywhere. *A number that moves when you
+  change a tolerance is not a result yet* — and only a sweep exposed it, because
+  the loose gap bit on exactly one row.
+
+Also corrected: the original 4d claimed a coarser grid "can only understate"
+leader profit. The grids are `{S*k/(n-1)}`, which are **not nested**, so that does
+not follow from the construction. The notebook now asserts the invariant that does
+hold — every grid is a feasible leader strategy, so none can beat the monopoly
+bound — and reports the monotonicity as an observation.
 
 #### Per-notebook work
 

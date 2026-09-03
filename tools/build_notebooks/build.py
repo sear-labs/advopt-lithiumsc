@@ -36,6 +36,7 @@ sys.path.insert(0, str(ROOT / "tools"))
 BUILDERS = {
     "04c": "build_notebooks.nb_04c",
     "04d": "build_notebooks.nb_04d",
+    "04e": "build_notebooks.nb_04e",
 }
 
 # what the shipped kernel actually ran; keep this matching reality (rule 3)
