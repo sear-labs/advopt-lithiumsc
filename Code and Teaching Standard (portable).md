@@ -230,22 +230,69 @@ Both are right. They are describing different artifacts.
 
 Concretely:
 
-- Hardcoded numbers in a teaching notebook are **correct**, not debt. Do not
-  refactor them into a config dict.
+- Hardcoded **knobs** in a teaching notebook are **correct**, not debt. Do not
+  refactor them into a config dict. See *Tables versus knobs* below for the one
+  class of number that does belong in a file.
 - A step written out by hand in a notebook that also exists in `src/` is
   **correct**, not duplication. Do not DRY it away.
 - Conversely: a helper used by one caller in `src/` is fine; a helper function in
   the *teaching section* of a notebook is not.
 
-### The two-folder shape
+### Tables versus knobs — the one class of number that leaves the notebook
+
+The rule above is right about parameters and wrong about instance data, and the
+distinction is not stylistic. It falls out of the agreement assertion itself:
+
+> **A number the notebook hands to the package may stay hardcoded — the assertion
+> proves both sides used it.
+> A number both sides look up independently must live in one file both sides
+> read — nothing else can prove they agree.**
+
+Call the first a **knob** and the second a **table**.
+
+- A **knob** is a scalar carrying a concept: a discount rate, a learning rate, a
+  breakpoint count — anything the narration explains, or invites the reader to
+  change. It stays written out in the cell. Seeing `NBP_REV = 7` beside the
+  sentence explaining what a breakpoint mesh does *is* the lesson, and the
+  notebook passes it into the package explicitly, so the assertion covers it.
+- A **table** is instance data: many entries, indexed by the model's own sets,
+  named nowhere in the prose. Typing it into the notebook and again into the
+  package duplicates *data* with nothing comparing the copies — the same failure
+  as duplicated code, one level down, and harder to spot, because a mismatch
+  surfaces as a failed assertion pointing at the model rather than at the number.
+
+So tables live in `data/raw/` and both sides read them. Three requirements make
+the loaded version teach *more* than the literals it replaces, not less:
+
+1. **Render the table.** A printed frame reads better than a page of dict
+   literals.
+2. **Show the key structure.** A frame shows rows and columns; the model indexes
+   by `(stage, region)`, or whatever its sets are, and every constraint below
+   looks values up by that key. Print the dictionary form so the index set is
+   explicit rather than implied by punctuation.
+3. **The package takes the data as an argument and never re-reads the file.**
+   Then a reader who edits a value sees it flow into both the hand-built model
+   and the check, and the assertion stays green. A check that punishes
+   experimenting is a check that gets switched off.
+
+### The shape: two folders, three roles
 
 ```
-src/<pkg>/     written for a machine to run a thousand times
-notebooks/     written for a person to read once
+src/<pkg>/                  written for a machine to run a thousand times
+data/raw/                   the instance tables both sides read
+notebooks/
+  00_walkthrough.ipynb      THIN: imports the package, holds no logic
+  NN_topic.ipynb            TEACHING: builds by hand, asserts agreement
 ```
 
 Same model, twice, **on purpose**. The notebook builds it by hand because that is
 the lesson; the package builds it once because that is the code.
+
+**The thin notebook is the cheapest reconciliation available.** It calls the same
+functions the entry point calls and holds no logic of its own, so it cannot
+drift — there is nothing in it to go stale. Worth having exactly once, as the
+front door: it proves the install works and reproduces the headline numbers
+before a reader invests an hour in the teaching notebooks.
 
 ### The agreement assertion — the mechanism that makes this safe
 
@@ -409,6 +456,8 @@ Flag these on sight:
   agree**. (The notebook reimplementing it is fine — see Part 4. The missing check
   is the defect.)
 - Parameters buried in function bodies instead of config *(in `src/`)*.
+- Instance data typed into both the notebook and the package, with nothing
+  comparing the two copies.
 - A single `output/` folder mixing intermediates with final results.
 - Committing large or regenerable data "just in case."
 - `sys.path.insert` hacks instead of a proper installable package.
@@ -451,6 +500,9 @@ Before a teaching notebook goes to students:
 - [ ] At least one "predict before you run" prompt, before the first result.
 - [ ] Any wrapper appears *after* the narration, with a reproduction check.
 - [ ] The Part 4 agreement assertion is present and passes.
+- [ ] Instance tables loaded from one shared file; knobs written out inline.
+- [ ] The package takes the data as an argument, so a reader's edit keeps the
+      assertion green.
 - [ ] Runs top to bottom in a fresh kernel, on a clean machine, with no local files.
 - [ ] Shipped executed — outputs and figures committed.
 - [ ] Every specific number in the prose came from that run, not from memory.

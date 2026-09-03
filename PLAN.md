@@ -16,8 +16,11 @@ lithium-modelling/
 ├── CLAUDE.md               the two standards and the boundary between them
 ├── README.md               install, run, what is committed, the Colab index
 ├── pyproject.toml          pinned, `pip install -e .`
-├── config.yaml
-├── scenarios/
+│
+├── data/raw/               ── THE SHARED INSTANCE ──  read by BOTH tracks
+│   ├── instance_base.csv   fixed/unit/opex/legacy, keyed (stage, region)
+│   ├── efficiency.csv      eta ceiling/base, alpha, beta, delta, keyed by stage
+│   └── market.csv          demand base + growth, experience0, keyed by region
 │
 ├── src/lithium/            ── STREAMLINED TRACK ──  conventions territory
 │   ├── regions.py          add_region, set_tiers, _cap_cum_mult
@@ -30,8 +33,10 @@ lithium-modelling/
 │   └── core.py             the one build(), parameterized
 │
 ├── notebooks/              ── TEACHING TRACK ──  teaching-standard territory
+│   ├── 00_index.ipynb                 THIN: imports the package, holds no logic,
+│   │                                  proves the install and the headline numbers
 │   ├── 00_concepts_guide.ipynb        (Part 0 — the template, and the front door)
-│   ├── 01_deterministic.ipynb
+│   ├── 01_deterministic.ipynb         TEACHING: built by hand, asserts agreement
 │   ├── 02_stochastic.ipynb  ... etc
 │   └── _bootstrap.py                  the Colab header every notebook opens with
 │
@@ -66,6 +71,17 @@ fixed in three places and missed in a fourth for months. That happened because
 nothing compared the copies. This cell compares them, on every run, forever.
 
 **A notebook without this cell is not finished.**
+
+**And the assertion needs shared inputs to mean anything.** If the notebook types
+its own 36 instance numbers and the package types its own, a failed assert is
+ambiguous — a typo in the data and a bug in a constraint look identical, and in
+practice that is how an assert gets switched off. So the instance tables live in
+`data/raw/` and both sides read them; the assertion is then unambiguous, and means
+exactly one thing when it fires: *somebody's model construction is wrong.*
+
+The CSV and the assertion do different jobs and neither substitutes for the other:
+the CSV removes a *reason* the two could differ, the assertion is the check. See
+`CLAUDE.md` Part 4, *Tables versus knobs*, for which numbers move and which stay.
 
 ## 3. What "easier for students" means concretely
 
@@ -109,6 +125,18 @@ Drive-only options both force vendoring and re-create the duplication problem.
 Nothing sensitive ships: `gurobi.lic` is excluded by `.gitignore` as both
 `gurobi.lic` and `*.lic`, verified with `git check-ignore` before the first
 commit, and the history was started clean.
+
+**What the split costs, stated plainly.** Today each Part 4 notebook is fully
+self-contained — every one redefines `REGIONS`, `add_region`, `set_tiers` and the
+rest, so a student can open Part 4d alone and run it. Afterwards each notebook
+needs one install cell first. The staged progression is untouched; *standalone-ness*
+is what is being spent, and it buys the single copy that the agreement assertion
+compares against. In Colab the cost is one cell the student never reads.
+
+The package appears in a teaching notebook exactly **twice** — the install in cell
+0, and the assertion in the last cell. The middle never imports it, because a
+notebook that imported the package to *build* the model would have deleted the
+lesson to save typing.
 
 Every notebook opens with a badge and this cell, and nothing else changes:
 
@@ -165,11 +193,38 @@ piece of the pattern at once.
       archetype-A repo and its `CLAUDE.md` is `PROJECT_CONVENTIONS.md` verbatim.
       Do not design this from scratch.
 - [ ] `src/lithium/` with the Part 4 family's shared code; `pip install -e .`
-- [ ] Adjudicate the drifted pairs this touches: `add_region` (4e's tariff/quota/
-      LCR version is a **feature** → parameterize), `best_response_cournot`
-      (**drift** → the `len(KR)` version wins), `joint_profit_max`, `set_tiers`
-- [ ] Rewrite `notebooks/04c_cournot.ipynb` to the Part 0 shape, with the
-      agreement assert
+- [x] **Adjudicated 2026-09-02** by hashing every top-level `def` body across all
+      fourteen notebooks and diffing the groups. Two of the four pairs no longer
+      exist — Phase 0 closed them, so the audit's §1.2 table is a pre-Phase-0
+      snapshot:
+      - `best_response_cournot` — 4 copies, **1 version**. Resolved by Phase 0.
+      - `joint_profit_max` — 3 copies, **1 version**. Resolved by Phase 0.
+      - `add_region` — **feature**, confirmed. 4e's version is a strict superset:
+        quota constraints, an LCR floor, a tariff folded into transport, and
+        `tariff_paid` reported separately. It is already self-disabling — empty
+        `TARIFF`/`QUOTA`/`LOCAL_MIN` collapse it to the base version exactly. Take
+        the 4e version as the single implementation with those three as optional
+        arguments defaulting to empty, and assert the collapse.
+      - `set_tiers` — **neither**. 3b indexes `STAGES` with `prod_by_stage`; the
+        Part 4 family indexes `REGIONS` with `top_by_region`. The arithmetic is
+        identical and the constants differ (3b runs `Q_START, Q_ADD = 400, 1000`
+        against the Part 4 family's `300, 700`). Same function, different index
+        set and instance → one pure function taking both as arguments, returning
+        the tier dicts rather than mutating module-level state in place.
+      - Also found, not in the audit: the redundant-cell defect Phase 0 fixed in
+        4c exists in **three more notebooks** — `Part4c_exact_MIQP` cells 13/14,
+        `Part4d` cells 11/12, `Part4e` cells 12/13 each define `_rev_breakpoints`
+        twice; `Part4e` cell 9 re-runs the whole learning block from cell 7. Phase 2.
+      - Also: the default-argument capture is still latent in the source —
+        `def _rev_breakpoints(..., n=NBP_REV)` — and harmless only because all
+        seven call sites now override it. The default goes away in the package.
+- [ ] Pull the three instance CSVs out of Part 4c per *Tables versus knobs*; ship
+      them as package data so `pip install git+...` carries them into Colab
+- [ ] Rewrite `notebooks/04c_cournot.ipynb` to the Part 0 shape, with the load /
+      render / show-the-keys / commented-edit-example cells, and the agreement
+      assert taking the instance as an argument
+- [ ] Break a constraint in `src/lithium/` on purpose and confirm the assertion
+      goes **red** — a green assert that has never failed is not yet evidence
 - [ ] Colab bootstrap + badge; open it in Colab and run it top to bottom
 - [ ] Fix the one wrong published claim now, independently: `PROJECT_JOURNAL.md`
       says commitment is worth ~20%; the current run says **24.6%**
@@ -234,5 +289,10 @@ worst offenders against "short enough to read without scrolling".
   line for a reason: Parts 2b, 2c, 4f and 5 are meant to be scaled and the other
   ten are meant to stay small. That survives as sizing switches and as what CI
   runs nightly versus per-commit — not as a difference in how they are narrated.
-- **It does not make the notebooks configurable.** Hardcoded numbers in a teaching
-  notebook are correct. See `CLAUDE.md` Part 6.
+- **It does not make the notebooks configurable — but it does give them a shared
+  instance.** *Revised 2026-09-02.* Knobs stay written out in the cell: `NBP_REV`,
+  `LR_CAPEX`, `DR`, `CHOKE` and the rest are the lesson, and Part 4c cell 31 asks
+  the reader to change one. Instance **tables** move to `data/raw/`, because the
+  agreement assertion cannot distinguish a data typo from a model bug unless both
+  sides start from the same numbers. There is still no `config.yaml` holding model
+  parameters. See `CLAUDE.md` Part 4, *Tables versus knobs*.

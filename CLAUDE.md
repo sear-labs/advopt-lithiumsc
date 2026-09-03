@@ -230,22 +230,69 @@ Both are right. They are describing different artifacts.
 
 Concretely:
 
-- Hardcoded numbers in a teaching notebook are **correct**, not debt. Do not
-  refactor them into a config dict.
+- Hardcoded **knobs** in a teaching notebook are **correct**, not debt. Do not
+  refactor them into a config dict. See *Tables versus knobs* below for the one
+  class of number that does belong in a file.
 - A step written out by hand in a notebook that also exists in `src/` is
   **correct**, not duplication. Do not DRY it away.
 - Conversely: a helper used by one caller in `src/` is fine; a helper function in
   the *teaching section* of a notebook is not.
 
-### The two-folder shape
+### Tables versus knobs — the one class of number that leaves the notebook
+
+The rule above is right about parameters and wrong about instance data, and the
+distinction is not stylistic. It falls out of the agreement assertion itself:
+
+> **A number the notebook hands to the package may stay hardcoded — the assertion
+> proves both sides used it.
+> A number both sides look up independently must live in one file both sides
+> read — nothing else can prove they agree.**
+
+Call the first a **knob** and the second a **table**.
+
+- A **knob** is a scalar carrying a concept: a discount rate, a learning rate, a
+  breakpoint count — anything the narration explains, or invites the reader to
+  change. It stays written out in the cell. Seeing `NBP_REV = 7` beside the
+  sentence explaining what a breakpoint mesh does *is* the lesson, and the
+  notebook passes it into the package explicitly, so the assertion covers it.
+- A **table** is instance data: many entries, indexed by the model's own sets,
+  named nowhere in the prose. Typing it into the notebook and again into the
+  package duplicates *data* with nothing comparing the copies — the same failure
+  as duplicated code, one level down, and harder to spot, because a mismatch
+  surfaces as a failed assertion pointing at the model rather than at the number.
+
+So tables live in `data/raw/` and both sides read them. Three requirements make
+the loaded version teach *more* than the literals it replaces, not less:
+
+1. **Render the table.** A printed frame reads better than a page of dict
+   literals.
+2. **Show the key structure.** A frame shows rows and columns; the model indexes
+   by `(stage, region)`, or whatever its sets are, and every constraint below
+   looks values up by that key. Print the dictionary form so the index set is
+   explicit rather than implied by punctuation.
+3. **The package takes the data as an argument and never re-reads the file.**
+   Then a reader who edits a value sees it flow into both the hand-built model
+   and the check, and the assertion stays green. A check that punishes
+   experimenting is a check that gets switched off.
+
+### The shape: two folders, three roles
 
 ```
-src/<pkg>/     written for a machine to run a thousand times
-notebooks/     written for a person to read once
+src/<pkg>/                  written for a machine to run a thousand times
+data/raw/                   the instance tables both sides read
+notebooks/
+  00_walkthrough.ipynb      THIN: imports the package, holds no logic
+  NN_topic.ipynb            TEACHING: builds by hand, asserts agreement
 ```
 
 Same model, twice, **on purpose**. The notebook builds it by hand because that is
 the lesson; the package builds it once because that is the code.
+
+**The thin notebook is the cheapest reconciliation available.** It calls the same
+functions the entry point calls and holds no logic of its own, so it cannot
+drift — there is nothing in it to go stale. Worth having exactly once, as the
+front door: it proves the install works and reproduces the headline numbers
+before a reader invests an hour in the teaching notebooks.
 
 ### The agreement assertion — the mechanism that makes this safe
 
@@ -409,6 +456,8 @@ Flag these on sight:
   agree**. (The notebook reimplementing it is fine — see Part 4. The missing check
   is the defect.)
 - Parameters buried in function bodies instead of config *(in `src/`)*.
+- Instance data typed into both the notebook and the package, with nothing
+  comparing the two copies.
 - A single `output/` folder mixing intermediates with final results.
 - Committing large or regenerable data "just in case."
 - `sys.path.insert` hacks instead of a proper installable package.
@@ -451,6 +500,9 @@ Before a teaching notebook goes to students:
 - [ ] At least one "predict before you run" prompt, before the first result.
 - [ ] Any wrapper appears *after* the narration, with a reproduction check.
 - [ ] The Part 4 agreement assertion is present and passes.
+- [ ] Instance tables loaded from one shared file; knobs written out inline.
+- [ ] The package takes the data as an argument, so a reader's edit keeps the
+      assertion green.
 - [ ] Runs top to bottom in a fresh kernel, on a clean machine, with no local files.
 - [ ] Shipped executed — outputs and figures committed.
 - [ ] Every specific number in the prose came from that run, not from memory.
@@ -521,6 +573,13 @@ Part 3 territory; Part 4 is the boundary and the reason this project has two
 folders holding the same model. See `PLAN.md` for the migration and
 `AUDIT_AND_REMEDIATION_PLAN.md` for the measured findings that motivated it.
 
+`src/lithium/` is a **model-builder library, not a data pipeline** — parameters in
+as arguments, a Gurobi model out. Measured 2026-09-02: all fourteen notebooks
+contain **zero** lines of file I/O. So `data/raw/` holds the instance tables of
+Part 4's *Tables versus knobs* and nothing else; there is no `interim`/`processed`
+flow and no `clean.py` stage, and adding empty ones because the archetype-A
+template has them would be scaffolding with nothing to hold.
+
 **Part 0 (`Part0_Concepts_Guide.ipynb`) is the template.** 23 sections, each a
 markdown explanation plus one short runnable demo, every code cell narrated, and
 its five small functions each *are* the lesson. When converting any other
@@ -540,9 +599,28 @@ notebook, the target shape is Part 0's.
   check a single number. Fixing this is Phase 2 of `PLAN.md`.
 - **Part 2 is 310 s of the 584 s full-series runtime.** It needs a `QUICK` switch
   for classroom use, with the full setting used for the committed run.
-- **Hardcoded numbers in these notebooks are correct.** Do not refactor them into
-  `config.yaml`. That is Part 4, and it is the single most likely wrong-direction
-  "fix" an assistant will attempt here.
+- **Knobs stay in the notebook; tables move to `data/raw/`.** This is Part 4's
+  *Tables versus knobs*, and it is the rule most likely to be applied in the wrong
+  direction here — in *either* direction. Concretely, for the Part 4 family:
+  - **Knobs — stay written out inline.** `DR`, `LIFE`, `CAP_MIN/MAX`, `BLOCKS`,
+    `CHOKE`, `P_ANCHOR`, `NBP_REV`, `LR_CAPEX`, `LR_OPEX`, `N_TIERS`,
+    `CAPEX_FLOOR`, `OPEX_FLOOR`, `LAG_YEARS`, `NBP`, `PRICE_FIXED`, `PEN_SHORT`,
+    `PEN_DISPOSE`, `TRANSPORT`. Do **not** move these to `config.yaml`. Cell 31
+    of Part 4c tells the reader to set `NBP_REV = 3`; that exercise requires the
+    value to be visible and assignable in the notebook.
+  - **Tables — load from `data/raw/`.** `FIXED`, `UNIT`, `OPEX`, `LEGACY_CAP`,
+    `LEGACY_RET` (6 rows keyed by stage x region); `ETA_CEIL`, `ETA_BASE`,
+    `ALPHA`, `BETA`, `DELTA_BAR` (3 rows keyed by stage); demand base/growth and
+    `EXPERIENCE0` (2 rows keyed by region).
+  - **Derived structure stays as code in the notebook.** `OMEGA`, `CRF`, `MU`,
+    `ETA`, `ACTIVE`, `VIN`, `BUILD`, `QBP`, `CBP` are computed, and computing
+    them is the lesson. They are neither knobs nor tables.
+  - The CSVs ship **inside the package** (`src/lithium/data/`) so that
+    `pip install git+https://...` carries them into Colab, with `data/raw/` at the
+    repo root as the editable copy.
+  - `lithium` functions take the instance **as an argument** and never read the
+    CSV during a notebook run, so a reader's edit flows into both the hand-built
+    model and the agreement assertion.
 
 ## Known open defects
 
