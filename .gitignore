@@ -34,7 +34,10 @@ venv/
 Thumbs.db
 desktop.ini
 *.bak
+*.bak-*
 *.pre-rebase.bak
+# *.bak alone does NOT match a dated backup like foo.zip.bak-2026-09-04,
+# which is the convention used when the template zips were rebuilt.
 
 # --- generated results. results/figures IS tracked on purpose (see README).
 results/tables/*

@@ -12,7 +12,7 @@ abstract: >-
 type: software
 authors:
   - family-names: Jones
-    given-names: Erick
+    given-names: Erick C.
     name-suffix: Jr.
     orcid: "https://orcid.org/0000-0003-0559-4699"
     affiliation: "University of Texas at Arlington"

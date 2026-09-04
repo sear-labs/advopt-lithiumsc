@@ -25,7 +25,7 @@ friction is what stops them.
 
 ```bibtex
 @software{jones_advopt_lithiumsc,
-  author  = {Jones, Erick C., Jr.},
+  author  = {Jones, Jr., Erick C.},
   title   = {Advanced Optimization Modeling: a lithium supply-chain series},
   year    = {2026},
   url     = {https://github.com/sear-labs/advopt-lithiumsc},

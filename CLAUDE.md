@@ -154,6 +154,30 @@ flow network (4f) and the integrated core with its recycling loop (5).
   says outright that nothing in it is random, and `04f`'s round-robin is
   deliberately not a random sample.
 
+## Before the first push — two values that must match exactly
+
+Neither is a defect in the code. Both are strings this repo has already
+committed to and cannot yet verify, because **there is no remote and
+`sear-labs/advopt-lithiumsc` does not exist** — `gh api` returns 404 as of
+2026-09-04. Whoever creates it decides both, and a near-miss on either produces
+the same failure: a badge that 404s, which reads as a hosting fault rather than
+a naming one, so the search starts in the wrong place.
+
+- **The repository must be created as exactly `sear-labs/advopt-lithiumsc`.**
+  That spelling is substituted into 64 badge and install URLs across 33 files.
+  It follows the Code Standard's teaching form — `method-application`, American
+  spelling — so `advopt`, not `advop` or `adv-opt`; `lithiumsc`, not
+  `lithium-sc`; and `optimization` nowhere in it, which is why the spelling
+  argument does not arise in the name itself.
+- **The default branch must be `main`, or the badges must change to `master`.**
+  The local branch is `master` (git's old default), and all 45 Colab badges name
+  `/blob/main/`. Pushing without settling this 404s every badge. `main` is the
+  cheaper side: GitHub creates new repos on it, the badges already say it, and
+  this repo has never been pushed so a `git branch -m master main` costs
+  nothing. The same split exists in `sear-labs/code-standard`, whose default is
+  `master` for the same reason — it was pushed from a local repo made under the
+  old default.
+
 ## Known open defects
 - **`tools/prosecheck.py` barely checks percentages.** Its tolerance has a flat
   0.06 absolute floor applied to the `val / 100` candidate too, where 0.06 means
