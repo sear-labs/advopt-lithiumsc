@@ -174,9 +174,17 @@ a naming one, so the search starts in the wrong place.
   `/blob/main/`. Pushing without settling this 404s every badge. `main` is the
   cheaper side: GitHub creates new repos on it, the badges already say it, and
   this repo has never been pushed so a `git branch -m master main` costs
-  nothing. The same split exists in `sear-labs/code-standard`, whose default is
-  `master` for the same reason — it was pushed from a local repo made under the
-  old default.
+  nothing. `sear-labs/code-standard` had the identical split for the identical
+  reason and was renamed to `main` on 2026-09-04, which is where this was found;
+  a stale `master` branch still resolves there until someone deletes it.
+
+  *That sentence was itself stale within the hour* — it said `code-standard`'s
+  default **is** `master`, which was true when written and false by the time
+  anyone read it. Fixed 2026-09-04. Two lessons, and the second is the reusable
+  one: the branch trap is real, and **a note asserting the current state of
+  something outside the repository starts decaying immediately.** Where the
+  claim matters, date it or check it — this file now does both, one paragraph
+  after making the same mistake it warns about.
 
 ## Known open defects
 - **`tools/prosecheck.py` barely checks percentages.** Its tolerance has a flat
