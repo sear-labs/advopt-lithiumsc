@@ -87,6 +87,43 @@ flow network (4f) and the integrated core with its recycling loop (5).
     dead.** That is what made the false all-clear plausible: the key nearest to
     hand had stopped working, which looks exactly like rotation from here.
 
+  **Both halves are now closed, and they are recorded separately because they
+  are separate claims with separate evidence** — the Code Standard's rule, which
+  this incident is the worked example for.
+
+  - **ROTATED — 2026-09-04, by Jones at the Gurobi portal.** *Evidence: an
+    authentication failure.* The exact pair recovered from the Drive file
+    returned `Unauthorized access` on three consecutive attempts, against a
+    control confirming `gp.Env()` still built fine on the default licence — so
+    the failure was the credential and not the machine, the library or the
+    network. That control is the whole difference between this finding and the
+    one it replaced: earlier the same day a dead key had been read as proof of a
+    rotation that never happened.
+  - **SCRUBBED — 2026-09-04, both Drive copies.** *Evidence: a diff.* The pasted
+    literals in each `Part4c_exact_MIQP.ipynb` were replaced with the
+    environment-variable pattern this repo uses, `try`-guarded so a rejected key
+    degrades to the default licence with a message. 40 cells before and after,
+    zero outputs disturbed, every other cell byte-identical, and the extractor
+    that had recovered all three values an hour earlier now recovers none —
+    checked against a backup where it still does, so the zero is a measurement.
+    Backups were written to a session scratchpad and deliberately **not** beside
+    the originals, because a `.bak` in a shared folder puts the credential back
+    into shared storage.
+
+  **The scrub was the optional half and it happened second, which is the right
+  order.** By the time those files were edited the key was already dead, so the
+  edit protected nobody — it stops the notebooks *teaching* a pasted credential,
+  which is a different and much smaller problem. Had the order been reversed,
+  the files would have looked clean while the key stayed live, which is exactly
+  how this began.
+
+  Three notebooks in each folder — Parts 1, 2 and 3 — name `WLSACCESSID` and
+  carry no value; they were checked rather than assumed. So was
+  `Part2b_Benders_Lshaped.ipynb`, whose eight UUID-shaped strings are Colab
+  `outputId` metadata. A scan that had flagged those as credentials would have
+  been the same false positive that briefly convinced another session the key
+  was still in this repository's history.
+
   **Three lessons, and the first is the one that cost the most.**
 
   *Scrubbing is not rotating.* The scrub changed what this repository shows.
