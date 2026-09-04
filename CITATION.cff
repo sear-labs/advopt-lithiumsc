@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use this teaching material, or the models in it, please cite it as below."
+title: "Advanced Optimization Modeling: a lithium supply-chain series"
+abstract: >-
+  Fifteen executed teaching notebooks and an accompanying Python package covering
+  deterministic and stochastic supply-chain optimization on a lithium battery
+  chain: MILP network design, two-stage stochastic programming, Benders and
+  progressive hedging, CVaR and minimax risk measures, Wright's-law learning
+  curves, Cournot and Stackelberg games, MPEC, network interdiction, and a
+  closed-loop recycling model. Each notebook builds its model by hand and then
+  asserts agreement with the packaged implementation to within 1e-9.
+type: software
+authors:
+  - family-names: Jones
+    given-names: Erick
+    name-suffix: Jr.
+    orcid: "https://orcid.org/0000-0003-0559-4699"
+    affiliation: "University of Texas at Arlington"
+repository-code: "https://github.com/sear-labs/advopt-lithiumsc"
+license: MIT
+keywords:
+  - optimization
+  - supply chain
+  - lithium
+  - stochastic programming
+  - teaching material
+  - operations research
+# No doi: yet, and that is deliberate rather than an oversight -- a DOI cannot
+# exist before the first release. The order is forced:
+#   1. this file, with no doi                         <- you are here
+#   2. connect the repo in Zenodo, tag a release
+#   3. Zenodo mints a VERSION doi and a CONCEPT doi
+#   4. add the CONCEPT doi here and commit
+# The concept DOI always resolves to the latest version and never changes, so
+# step 4 is a one-time edit and not a per-release chore. See CLAUDE.md Part 5,
+# "Every published repo carries a licence AND a citation".
