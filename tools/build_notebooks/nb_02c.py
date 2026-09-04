@@ -412,7 +412,10 @@ print(f"\n  capex  {n_['capex']:8.1f} -> {h_['capex']:8.1f}")
 print(f"  capacity {sum(res['neutral']['plan'].values()):6.1f} -> "
       f"{sum(res['hybrid']['plan'].values()):6.1f}")
 
-assert abs(n_["capex"] - h_["capex"]) < 1e-6, \
+# Compared RELATIVELY. An absolute 1e-6 on a cost in the thousands is
+# ~1e-10 relative - tighter than the solver promises, and far tighter than
+# the 8.8e-7 variation between platforms this series has measured.
+assert abs(n_["capex"] - h_["capex"]) <= 1e-6 * max(1.0, abs(n_["capex"])), \
     "the two plans differ in capex, so this is not purely a relocation"
 assert h_["mean"] > n_["mean"] and h_["worst"] < n_["worst"], \
     "the risk-averse plan should cost more on average and less in the tail"

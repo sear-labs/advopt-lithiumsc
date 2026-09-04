@@ -434,9 +434,12 @@ print(f"{'variant':11s} {'capex':>11s} {'opex':>11s}")
 for lm in ("none", "capacity", "production", "both"):
     print(f"{lm:11s} {cap[lm]:11.4f} {opx[lm]:11.4f}")
 
-assert abs(cap["production"] - cap["none"]) < 1e-6, (
+# Compared RELATIVELY. An absolute 1e-6 on a cost in the thousands is
+# ~1e-10 relative - tighter than the solver promises, and far tighter than
+# the 8.8e-7 variation between platforms this series has measured.
+assert abs(cap["production"] - cap["none"]) <= 1e-6 * max(1.0, abs(cap["none"])), (
     "production learning changed capex; Channel B is supposed to touch opex only")
-assert abs(opx["both"] - opx["production"]) < 1e-6, (
+assert abs(opx["both"] - opx["production"]) <= 1e-6 * max(1.0, abs(opx["production"])), (
     "adding Channel A changed Channel B's opex; the channels are interfering")
 print(f"\nChannel B leaves capex untouched : {cap['none']:.4f} = {cap['production']:.4f}")
 print(f"Channel A leaves Channel B's opex : {opx['production']:.4f} = {opx['both']:.4f}")

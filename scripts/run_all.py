@@ -1009,7 +1009,7 @@ def run_02c(ctx):
           f"the free check on the CVaR block")
 
     n_, h_ = ev["neutral"], ev["hybrid"]
-    assert abs(n_["capex"] - h_["capex"]) < 1e-6, \
+    assert _close(n_["capex"], h_["capex"]), \
         "the risk-averse plan differs in capex, so it is not a pure relocation"
     print(f"the hedge: mean {100 * (h_['mean'] / n_['mean'] - 1):+.2f}%, "
           f"worst {100 * (h_['worst'] / n_['worst'] - 1):+.2f}%, "
@@ -1074,6 +1074,18 @@ MIPGAP_NC = 1e-6
 # period is a different plan. PLAN_RTOL is eleven times the observed wobble and
 # still catches a 0.01-unit change on a 227-unit build (4.4e-5).
 PLAN_RTOL = 1e-5
+
+
+def _close(a, b, rtol=1e-6):
+    """Two quantities that should be identical, compared RELATIVELY.
+
+    An absolute 1e-6 on a cost of 29,544 is 3.4e-11 relative -- tighter than any
+    solver promises and far tighter than the 8.8e-7 platform variation this
+    repository has actually observed. rtol here matches the MIP gap the solves
+    are given, so it asserts agreement to the precision that was asked for and
+    no further.
+    """
+    return abs(a - b) <= rtol * max(1.0, abs(a), abs(b))
 
 
 def _same_plan(a, b, rtol=PLAN_RTOL):
@@ -1185,12 +1197,26 @@ def run_03(ctx):
                            learn_stages=NC_LEARN_STAGES, allow_dispose=False,
                            pen_short=NC_PEN_SHORT, mipgap=MIPGAP_NC)
     m = base["model"]
+    # A breakpoint counts as ACTIVE well above the solver's own noise floor.
+    # This was 1e-6, which is Gurobi's default FeasibilityTol, so a residual of
+    # 1.000001e-6 was being read as a real interpolation weight -- and a Linux
+    # runner duly reported non-adjacent breakpoints in period 7. Measured here,
+    # the smallest genuine weight is 0.125 and nothing else exceeds 1e-12, so
+    # there is a band three orders wide between signal and residue; 1e-4 sits in
+    # the middle of it rather than at the bottom.
+    LAM_ACTIVE = 1e-4
     interp = sum(1 for p in st.P
-                 if sum(1 for k in m._K if m._lam[p, k].X > 1e-6) > 1)
+                 if sum(1 for k in m._K if m._lam[p, k].X > LAM_ACTIVE) > 1)
     for p in st.P:
-        ks = sorted(k for k in m._K if m._lam[p, k].X > 1e-6)
+        ks = sorted(k for k in m._K if m._lam[p, k].X > LAM_ACTIVE)
+        if not (len(ks) <= 1 or (len(ks) == 2 and ks[1] == ks[0] + 1)):
+            # Say what was seen, not just that the invariant broke.
+            shown = {k: round(m._lam[p, k].X, 9)
+                     for k in m._K if m._lam[p, k].X > 1e-12}
+            print(f"\n!! period {p} weights above 1e-12: {shown}")
+            print(f"   active at > {LAM_ACTIVE}: {ks}")
         assert len(ks) <= 1 or (len(ks) == 2 and ks[1] == ks[0] + 1), (
-            f"period {p} used non-adjacent breakpoints; SOS2 is not binding")
+            f"period {p} used non-adjacent breakpoints {ks}; SOS2 is not binding")
     maxq = max(m._Q[p].X for p in st.P)
     assert maxq < curve[0][-1] - 1e-6, \
         f"the solution reached the top of the learning mesh ({maxq:.1f})"
@@ -1256,9 +1282,9 @@ def run_03b(ctx):
     # the channels are separable: each touches its own cost term and no other
     cap = {lm: res[lm]["components"]["capex"] for lm in res}
     opx = {lm: res[lm]["components"]["operate"] for lm in res}
-    assert abs(cap["production"] - cap["none"]) < 1e-6, (
+    assert _close(cap["production"], cap["none"]), (
         "production learning moved capex; Channel B is supposed to touch opex only")
-    assert abs(opx["both"] - opx["production"]) < 1e-6, (
+    assert _close(opx["both"], opx["production"]), (
         "adding Channel A moved Channel B's opex; the channels are interfering")
     print(f"\nchannels are separable: capex {cap['none']:.4f} = "
           f"{cap['production']:.4f}, opex {opx['production']:.4f} = {opx['both']:.4f}")

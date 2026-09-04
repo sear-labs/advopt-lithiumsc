@@ -494,9 +494,17 @@ non-zero $\lambda$s, and they must be neighbours.
 """)
 
     C(r'''
+# Where does an interpolation weight stop and solver residue begin? Gurobi's
+# default FeasibilityTol is 1e-6, so a threshold AT 1e-6 reads a residual of
+# 1.000001e-6 as a real weight - and a Linux runner duly reported two
+# non-adjacent breakpoints in one period. The genuine weights below are never
+# smaller than 0.125 and nothing else exceeds 1e-12, so there is a band three
+# orders of magnitude wide; this sits in the middle of it.
+LAM_ACTIVE = 1e-4
+
 rows = []
 for p in P:
-    nz = {k: round(lam[p, k].X, 3) for k in K if lam[p, k].X > 1e-6}
+    nz = {k: round(lam[p, k].X, 3) for k in K if lam[p, k].X > LAM_ACTIVE}
     ks = sorted(nz)
     adjacent = len(ks) <= 1 or (len(ks) == 2 and ks[1] == ks[0] + 1)
     rows.append(dict(period=p, year=START[p], Q=round(Q[p].X, 1),
@@ -505,6 +513,12 @@ for p in P:
                      adjacent=adjacent))
 mesh = pd.DataFrame(rows)
 
+if not mesh.adjacent.all():
+    bad = mesh[~mesh.adjacent]
+    print("!! non-adjacent periods and their weights:")
+    for _i, row in bad.iterrows():
+        print(f"   period {row.period}: "
+              f"{ {k: round(lam[row.period, k].X, 9) for k in K if lam[row.period, k].X > 1e-12} }")
 assert mesh.adjacent.all(), \
     "a period used two non-adjacent breakpoints, so SOS2 is not being enforced"
 n_interp = (mesh.status == "interpolating").sum()
@@ -513,7 +527,7 @@ assert n_interp > 0, \
 maxq = mesh.Q.max()
 assert maxq < QBP[-1] - 1e-6, \
     f"the solution reached the top of the mesh ({maxq}); it is extrapolating"
-used = sorted({k for p in P for k in K if lam[p, k].X > 1e-6})
+used = sorted({k for p in P for k in K if lam[p, k].X > LAM_ACTIVE})
 print(f"{n_interp} of {len(P)} periods interpolate; adjacency holds everywhere")
 print(f"max Q reached {maxq:.1f} against a mesh top of {QBP[-1]:.0f}")
 print(f"breakpoints never used: {sorted(set(K) - set(used))} of {len(K)}")
