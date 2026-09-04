@@ -636,15 +636,7 @@ for cm in ("annualized", "lumpsum"):
     for lm in ("endogenous", "none"):
         r = solve_variant(capex_mode=cm, learning=lm)
         label = f"capex={cm}, learning={lm}"
-        # float("%.7g") first: two solves inside the same MIP gap can land on
-        # equally optimal vertices whose capacities differ in the last digits.
-        # CI saw 1256.4491 where this machine saw 1256.4493 - 1.6e-7 relative,
-        # well inside the 1e-6 gap - and an exact tuple comparison called that a
-        # different plan. The KEYS still compare exactly, so a genuinely
-        # different decision still trips the assertion below; only the trailing
-        # digits are forgiven.
-        plans[label] = tuple(sorted((k, float(f"{v:.7g}"))
-                                    for k, v in r["plan"].items()))
+        plans[label] = dict(r["plan"])
         rows.append(dict(variant=label, objective=round(r["obj"], 1),
                          builds=len(r["plan"]),
                          capacity=round(sum(r["plan"].values()), 1),
@@ -652,7 +644,19 @@ for cm in ("annualized", "lumpsum"):
                          unmet=r["unmet"]))
 variants = pd.DataFrame(rows)
 
-n_distinct = len(set(plans.values()))
+# Compare the DECISION, and the sizes to a tolerance. Two solves inside the same
+# MIP gap can land on equally optimal vertices whose capacities differ in the
+# last digits - a Linux runner gave 226.9412 where this machine gave 226.941, on
+# the same sites in the same periods. Rounding does not fix that: 255.7225 and
+# 255.7223 round to DIFFERENT values at six significant figures.
+PLAN_RTOL = 1e-5     # the solves get mipgap=1e-6; this is deliberately looser
+
+ref = plans["capex=annualized, learning=endogenous"]
+agree = all(set(pl) == set(ref)
+            and all(abs(pl[k] - ref[k]) <= PLAN_RTOL * max(1.0, abs(ref[k]))
+                    for k in ref)
+            for pl in plans.values())
+n_distinct = 1 if agree else len(plans)
 print(f"DISTINCT BUILD PLANS among the four variants: {n_distinct}")
 assert n_distinct == 1, (
     f"{n_distinct} distinct plans; this section's whole point is that all four "

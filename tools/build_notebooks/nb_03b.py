@@ -406,12 +406,7 @@ for lm in ("none", "capacity", "production", "both"):
     res[lm] = mm
     pl = {k: round(mm._v["size"][k].X, 6)
           for k in BUILD if mm._v["build"][k].X > 0.5}
-    # float("%.7g") first: two solves inside the same MIP gap can land on
-    # equally optimal vertices whose capacities differ in the last digits,
-    # and an exact tuple comparison calls that a different plan. CI hit
-    # exactly that in Part 3 (1256.4491 against 1256.4493). Keys still
-    # compare exactly, so a real difference still trips section 13.
-    plans[lm] = tuple(sorted((k, float(f"{v:.7g}")) for k, v in pl.items()))
+    plans[lm] = tuple(sorted(pl.items()))
     rows.append(dict(learning=lm, objective=round(mm.ObjVal, 1),
                      capex=round(mm._e["capex"].getValue(), 1),
                      opex=round(mm._e["operate"].getValue(), 1),
@@ -695,10 +690,22 @@ comp = pd.DataFrame([
     for lm in ("none", "capacity", "production", "both")])
 
 print(f"DISTINCT BUILD PLANS among the four variants: {n_distinct}")
-assert plans["none"] == plans["production"] == plans["both"], (
+# Sizes compared with a tolerance, not for equality. Two solves inside the same
+# MIP gap can land on equally optimal vertices differing in the last digits;
+# Part 3 hit exactly that on a Linux runner - 226.9412 against 226.941, same
+# sites, same periods. Keys still compare exactly, so a genuinely different plan
+# still trips these.
+PLAN_RTOL = 1e-5
+_d = {lm: dict(plans[lm]) for lm in plans}
+_close = {(x, y): set(_d[x]) == set(_d[y])
+          and all(abs(_d[x][k] - _d[y][k]) <= PLAN_RTOL * max(1.0, abs(_d[y][k]))
+                  for k in _d[y])
+          for x in _d for y in _d}
+
+assert _close[("none", "production")] and _close[("none", "both")], (
     "production learning changed the build plan; section 13's claim is that it "
     "does not, so the prose needs rewriting rather than the assertion relaxing")
-assert plans["capacity"] != plans["none"], \
+assert not _close[("capacity", "none")], \
     "capacity learning changed nothing at all, which section 13 says it does"
 print("`none`, `production` and `both` share a plan; only `capacity` differs")
 comp

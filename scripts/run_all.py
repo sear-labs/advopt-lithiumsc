@@ -1061,6 +1061,36 @@ P3B_LCR_LEVELS = [0.0, 60.0, 110.0, 160.0]
 # 45,546.0) - invisible against the gap, larger than several measured effects.
 MIPGAP_NC = 1e-6
 
+# Two solves inside the same MIP gap can land on equally optimal vertices whose
+# capacities differ in the last digits: a Linux runner produced 226.9412 where
+# this machine produced 226.941, on the same sites in the same periods -- 8.8e-7
+# relative on a ~227-unit build, inside the 1e-6 gap the solve was given.
+#
+# Compared with a TOLERANCE rather than normalised to a key, because rounding is
+# brittle exactly at the boundaries: 255.7225 and 255.7223 round to different
+# values at six significant figures, and no choice of precision fixes that.
+#
+# Keys still compare exactly, so a build at a different site or in a different
+# period is a different plan. PLAN_RTOL is eleven times the observed wobble and
+# still catches a 0.01-unit change on a 227-unit build (4.4e-5).
+PLAN_RTOL = 1e-5
+
+
+def _same_plan(a, b, rtol=PLAN_RTOL):
+    a, b = dict(a), dict(b)
+    if set(a) != set(b):
+        return False
+    return all(abs(a[k] - b[k]) <= rtol * max(1.0, abs(a[k]), abs(b[k])) for k in a)
+
+
+def _distinct_plans(plans):
+    """Number of equivalence classes of plans under _same_plan."""
+    reps = []
+    for pl in plans.values():
+        if not any(_same_plan(pl, r) for r in reps):
+            reps.append(pl)
+    return len(reps)
+
 
 def setup_netcore(source):
     """The network-core instance, shared by Parts 3 and 3b."""
@@ -1106,14 +1136,7 @@ def run_03(ctx):
             assert r["obj"] is not None, f"{cm}/{lm} found no solution"
             assert r["short"] < 1e-6, f"{cm}/{lm} leaves demand unmet"
             label = f"capex={cm}, learning={lm}"
-            # float("%.7g"): two solves inside the same MIP gap can land on
-            # equally optimal vertices whose capacities differ in the last
-            # digits. CI saw 1256.4491 where this machine saw 1256.4493 -
-            # 1.6e-7 relative, inside the 1e-6 gap - and an exact tuple
-            # comparison called that a different plan. Keys still compare
-            # exactly, so a real difference still trips the assertion.
-            plans[label] = tuple(sorted((k, float(f"{v:.7g}"))
-                                        for k, v in r["plan"].items()))
+            plans[label] = dict(r["plan"])
             rows.append(dict(variant=label, objective=round(r["obj"], 1),
                              builds=r["builds"], capacity=r["capacity"],
                              first_year=min(r["build_years"]),
@@ -1121,7 +1144,7 @@ def run_03(ctx):
     variants = _show("03_variants", pd.DataFrame(rows))
 
     # the finding: four variants, one decision
-    n_distinct = len(set(plans.values()))
+    n_distinct = _distinct_plans(plans)
     if n_distinct != 1:
         # Say WHAT differs. This fired on a Linux runner while every plan on the
         # development machine was bit-identical, and the table above cannot tell
@@ -1242,10 +1265,15 @@ def run_03b(ctx):
     print(f"Channel A takes {100 * (1 - cap['capacity'] / cap['none']):.2f}% off capex; "
           f"Channel B takes {100 * (1 - opx['production'] / opx['none']):.2f}% off opex")
 
-    # and neither moves the decision much
-    n_distinct = len(set(plans.values()))
-    assert plans["none"] == plans["production"] == plans["both"], (
+    # and neither moves the decision much. Same tolerance as Part 3, and for
+    # the same reason: equally optimal vertices can differ in the last digits.
+    n_distinct = _distinct_plans(plans)
+    assert (_same_plan(plans["none"], plans["production"])
+            and _same_plan(plans["none"], plans["both"])), (
         "production learning changed the build plan; Part 3b says it does not")
+    assert not _same_plan(plans["capacity"], plans["none"]), (
+        "capacity learning stopped moving the plan; Part 3b's contrast between "
+        "the two channels is that exactly one of them does")
     print(f"DISTINCT BUILD PLANS among the four: {n_distinct} - only capacity "
           f"learning moves anything")
 
