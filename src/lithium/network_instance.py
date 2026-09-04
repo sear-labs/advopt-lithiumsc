@@ -14,7 +14,7 @@ Three tables, three key structures:
     network_tiers.csv    keyed tier   2 rows   the yield-curve parameters
     network_demand.csv   keyed region 2 rows   demand base and growth
 
-`CLAUDE.md` Part 4's *Tables versus knobs* is the rule. What is **not** here, and
+the Code Standard, Part 4's *Tables versus knobs* is the rule. What is **not** here, and
 belongs in the notebook cell that explains it: the horizon `T`, the discount rate
 `r`, `max_builds`, `life`, the learning rate and its floor, the slack penalty,
 the transport costs, and the mining yield. Those are knobs — scalars carrying a

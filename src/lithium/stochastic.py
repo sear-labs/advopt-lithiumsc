@@ -19,7 +19,7 @@ Four quantities, and keeping them straight is most of the subject:
 **Theory says WS <= RP <= EEV**, and `three_case_comparison` computes all three
 through *identical* evaluation machinery so the comparison is meaningful. Every
 number it returns is an evaluated expectation; none is a raw solve value. Getting
-that wrong is `CLAUDE.md` Part 6's "comparing two things that were not asked the
+that wrong is the Code Standard, Part 6's "comparing two things that were not asked the
 same question", and it is very easy here.
 
 Two changes from the notebook this was extracted from, both deliberate:

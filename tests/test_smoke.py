@@ -394,7 +394,7 @@ def test_nonanticipativity_is_what_the_extensive_form_adds(stoch):
 
 
 def test_the_ws_rp_eev_chain_holds(stoch):
-    """CLAUDE.md Part 6: assert the theory, and evaluate all three identically."""
+    """the Code Standard, Part 6: assert the theory, and evaluate all three identically."""
     r = L.three_case_comparison(stoch["st"], stoch["scens"], stoch["iy"],
                                 stoch["s1"], mipgap=1e-6)
     assert r["WS"] <= r["RP"] + 1e-6, "wait-and-see must be a lower bound on RP"

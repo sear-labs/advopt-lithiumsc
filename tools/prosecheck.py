@@ -4,7 +4,7 @@
     python tools/prosecheck.py                      # every notebook in notebooks/
     python tools/prosecheck.py notebooks/04c_cournot.ipynb
 
-`CLAUDE.md` Part 6, *Every number in the prose comes from a run*: a parameter
+the Code Standard, Part 6, *Every number in the prose comes from a run*: a parameter
 changes, every downstream figure in the narration is now wrong, and nothing
 complains. A human will not re-check forty figures after every edit.
 

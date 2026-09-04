@@ -503,7 +503,7 @@ GRANULARITIES = {"annual": 1, "triennial": 3, "quinquennial": 5}
 # policy that commits 1 year at a time is a DIFFERENT policy from one that
 # commits 3, and gives a different answer (+73.5% vs the notebook's +74.6%
 # at W=3). These must match the notebook or the two halves of the repo are
-# answering different questions - CLAUDE.md Part 6.
+# answering different questions - the Code Standard, Part 6.
 ROLLING_W = [3, 4, 5, 6, 8, 10, 20]
 ROLLING_DELTA = 3
 # 1e-3, not the 0.005 default: section (b) asserts that no coarser mesh beats
@@ -594,7 +594,7 @@ def run_01(ctx):
     for W in ROLLING_W:
         # rolling_horizon returns the COMMITTED plan, not a cost: the myopic run
         # never solved the full horizon. Scoring it on the full-horizon model is
-        # what makes it comparable to `full` - CLAUDE.md Part 6, match the
+        # what makes it comparable to `full` - the Code Standard, Part 6, match the
         # comparison before interpreting the difference.
         plan, _log = L.rolling_horizon(st, W=W, delta=ROLLING_DELTA,
                                        invest_step=NET_INVEST_STEP,

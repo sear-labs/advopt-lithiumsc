@@ -1,6 +1,6 @@
 """The instance tables — the numbers both the notebooks and this package read.
 
-`CLAUDE.md` Part 4, *Tables versus knobs*, is the rule this module implements.
+the Code Standard, Part 4, *Tables versus knobs*, is the rule this module implements.
 A **knob** is a scalar carrying a concept (a discount rate, a breakpoint count).
 Knobs stay written out in the notebook cell and are handed to this package
 explicitly, so the agreement assertion already covers them. A **table** is

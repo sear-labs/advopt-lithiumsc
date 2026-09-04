@@ -1,12 +1,11 @@
 """Cell sources shared by every migrated notebook in this series.
 
 Each notebook builds the same instance, the same derived structure and the same
-learning curve, **by hand**, because deriving them is the lesson (`CLAUDE.md`
-Part 3). That means the same twenty-odd narrated cells appear in every notebook —
+learning curve, **by hand**, because deriving them is the lesson (the Code Standard, Part 3). That means the same twenty-odd narrated cells appear in every notebook —
 which is exactly the duplication that goes stale when a fix lands in three
 notebooks out of four.
 
-So they are emitted from here. `CLAUDE.md` Part 4's corollary applies: this
+So they are emitted from here. the Code Standard, Part 4's corollary applies: this
 module is the source of truth and the notebook is a build output, and
 `tests/test_notebook_sources.py` asserts that regenerating reproduces the sources
 that shipped. Without that test this file and the notebooks would drift exactly

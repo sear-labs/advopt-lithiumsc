@@ -1,6 +1,6 @@
 """lithium — the streamlined half of the lithium supply-chain modelling series.
 
-`CLAUDE.md` Part 4 is the map. This package is engineering territory: one
+the Code Standard, Part 4 is the map. This package is engineering territory: one
 implementation of each model, every parameter arriving as an argument, written
 for a machine to run a thousand times. The notebooks are teaching territory:
 they build the same models **by hand**, because the steps are the lesson.

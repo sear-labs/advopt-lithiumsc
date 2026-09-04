@@ -516,7 +516,7 @@ government revenue means it nets out of $W$ entirely, leaving only the
 *behavioural* distortion. A quota produces the same kind of distortion with no
 offsetting term at all.
 
-**One thing to be careful about**, and it is `CLAUDE.md` Part 6's *comparing two
+**One thing to be careful about**, and it is the Code Standard, Part 6's *comparing two
 different measurements*: the consumer surplus here is **discounted** by
 $\omega_p$, whereas Part 4c's `market_outcome` reports an undiscounted figure. The
 two are not comparable and this notebook never mixes them. Every consumer-surplus

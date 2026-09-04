@@ -47,7 +47,7 @@ from gurobipy import GRB
 # Solve every LP and MILP here at a gap far tighter than anything being
 # measured. Part 2b differences an L-shaped bound against the extensive form's
 # objective and asserts they agree to 1e-5; Part 2c differences plan means that
-# sit 0.06% apart. See CLAUDE.md Part 6, and the note in stochastic.py.
+# sit 0.06% apart. See the Code Standard, Part 6, and the note in stochastic.py.
 MIPGAP_DEFAULT = 1e-9
 
 
@@ -452,7 +452,7 @@ def evaluate_capacity(st: TwoStageStructure, scens, plan: dict, *,
     whose true mean is 1642.2 -- a 37% overstatement, on a plan identical to the
     CVaR one.
 
-    CLAUDE.md Part 6: match the comparison before interpreting the difference.
+    the Code Standard, Part 6: match the comparison before interpreting the difference.
     """
     capex = sum(st.inst.fix[s] * (1.0 if plan[s, r] > 1e-6 else 0.0)
                 + st.inst.unit[s] * plan[s, r] for (s, r) in st.nodes)

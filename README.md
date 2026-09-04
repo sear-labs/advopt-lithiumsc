@@ -12,7 +12,7 @@ The repository holds **the same models twice, on purpose**:
 
 That duplication is a design decision, and the thing that makes it safe is the **agreement
 assertion** in the last cell of every teaching notebook: it imports the package, runs the same case,
-and asserts the two objectives agree to $10^{-9}$. See `CLAUDE.md` Part 4 for the full reasoning.
+and asserts the two objectives agree to $10^{-9}$. See the Code Standard, Part 4 for the full reasoning.
 
 ---
 

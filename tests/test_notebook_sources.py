@@ -1,6 +1,6 @@
 """The notebooks are build outputs; this proves regenerating reproduces them.
 
-`CLAUDE.md` Part 4, *Corollary: generated artifacts*: if a notebook is generated
+the Code Standard, Part 4, *Corollary: generated artifacts*: if a notebook is generated
 by a script, the script is the source of truth and the artifact is a build
 output — and something must check that regenerating reproduces what shipped. "A
 build script and its output drift exactly as fast as two pasted copies do, and

@@ -6,7 +6,7 @@
 > remains is the reasoning behind the shape you are looking at: why the package
 > and the notebooks deliberately hold the same models, and what makes that safe.
 >
-> The rule itself lives in `CLAUDE.md` Part 4. This document is why it was
+> The rule itself lives in the Code Standard, Part 4. This document is why it was
 > adopted here.
 
 ---
@@ -92,7 +92,7 @@ exactly one thing when it fires: *somebody's model construction is wrong.*
 
 The CSV and the assertion do different jobs and neither substitutes for the other:
 the CSV removes a *reason* the two could differ, the assertion is the check. See
-`CLAUDE.md` Part 4, *Tables versus knobs*, for which numbers move and which stay.
+the Code Standard, Part 4, *Tables versus knobs*, for which numbers move and which stay.
 
 ## 3. What "easier for students" means concretely
 
@@ -214,7 +214,7 @@ itself, one row per notebook, each with an "Open in Colab" badge.
   the reader to change one. Instance **tables** move to `data/raw/`, because the
   agreement assertion cannot distinguish a data typo from a model bug unless both
   sides start from the same numbers. There is still no `config.yaml` holding model
-  parameters. See `CLAUDE.md` Part 4, *Tables versus knobs*.
+  parameters. See the Code Standard, Part 4, *Tables versus knobs*.
 
 
 ---

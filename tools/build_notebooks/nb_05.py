@@ -7,7 +7,7 @@ what is available in period 8.
 
 **The migration's main structural change.** The original kept every parameter in
 one `BASE = dict(...)` at the top and had `build(cfg)` read from it. That is
-correct for a package and wrong for a teaching notebook -- `CLAUDE.md` Part 3 is
+correct for a package and wrong for a teaching notebook -- the Code Standard, Part 3 is
 explicit that a config dict at the top makes every subsequent cell a lookup
 rather than a decision. So the numbers are split the way Part 4 asks: the
 per-stage costs and lifetimes, per-region demand and the legacy fleet become

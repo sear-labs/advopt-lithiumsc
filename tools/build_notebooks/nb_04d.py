@@ -926,7 +926,7 @@ do is behave like one and accept the price the follower's output leaves it.
 The follower's capacity expansion $\kappa$ is the entry decision. How much does
 the leader's commitment suppress it?
 
-The comparison needs care, and it is the mistake `CLAUDE.md` Part 6 calls
+The comparison needs care, and it is the mistake the Code Standard, Part 6 calls
 *comparing two things that were not asked the same question*. The right
 counterfactual is **the same follower problem, against a leader playing its
 Cournot quantity** — not the follower's Cournot outcome, which came from a

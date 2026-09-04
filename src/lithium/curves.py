@@ -5,7 +5,7 @@ version of `_rev_breakpoints` carried ``n=NBP_REV`` as a *default*, which froze
 the breakpoint count at definition time and made a later ``NBP_REV = 3`` silently
 do nothing. It was harmless only because every call site happened to override it.
 The default is gone here — `n` is required — so the bug cannot come back.
-(`CLAUDE.md` Part 6, "Default-argument capture".)
+(the Code Standard, Part 6, "Default-argument capture".)
 """
 from __future__ import annotations
 

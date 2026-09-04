@@ -1,6 +1,6 @@
 """Build notebooks/00_start_here.ipynb -- the thin front door.
 
-`CLAUDE.md` Part 4: *"The thin notebook is the cheapest reconciliation
+the Code Standard, Part 4: *"The thin notebook is the cheapest reconciliation
 available. It calls the same functions the entry point calls and holds no logic
 of its own, so it cannot drift -- there is nothing in it to go stale. Worth
 having exactly once, as the front door: it proves the install works and

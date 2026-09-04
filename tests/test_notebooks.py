@@ -6,8 +6,7 @@ the two still agree** — the agreement assertion in the last cell of each noteb
 does that, and this test is what runs it.
 
 It also catches the failure modes that reading never finds: cell-order
-dependence, a silently empty model, a stale number in a print. `CLAUDE.md`
-Part 6 lists the rest.
+dependence, a silently empty model, a stale number in a print. the Code Standard, Part 6 lists the rest.
 """
 from pathlib import Path
 
@@ -34,7 +33,7 @@ def test_notebook_executes(path):
 
 @pytest.mark.parametrize("path", NOTEBOOKS, ids=lambda p: p.name)
 def test_notebook_has_an_agreement_assertion(path):
-    """A teaching notebook without this cell is not finished (CLAUDE.md Part 4)."""
+    """A teaching notebook without this cell is not finished (the Code Standard, Part 4)."""
     nb = nbformat.read(path, as_version=4)
     sources = ["".join(c.source) for c in nb.cells if c.cell_type == "code"]
     imports_package = any("lithium" in s for s in sources)
@@ -67,7 +66,7 @@ def test_notebook_ships_executed(path):
 
 @pytest.mark.parametrize("path", NOTEBOOKS, ids=lambda p: p.name)
 def test_no_function_definitions_before_the_narration(path):
-    """CLAUDE.md Part 3, the inversion check.
+    """the Code Standard, Part 3, the inversion check.
 
     The first `def` longer than 8 lines must not sit in the first half of the
     notebook — that is the shape where a student meets the abstraction before the

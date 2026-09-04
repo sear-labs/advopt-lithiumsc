@@ -25,7 +25,7 @@ Two consequences worth knowing before reading the code:
   exactly that reason.
 
 Part 5's original notebook kept every parameter in one `BASE` dict. Here they are
-split the way `CLAUDE.md` Part 4 asks: instance **tables** in `data/raw/`
+split the way the Code Standard, Part 4 asks: instance **tables** in `data/raw/`
 (per-stage costs and lifetimes, per-region demand, the legacy fleet) and
 **knobs** as keyword arguments (the period plan, the discount rate, the size
 bounds, the loop's `pack_life` and `recovery`).

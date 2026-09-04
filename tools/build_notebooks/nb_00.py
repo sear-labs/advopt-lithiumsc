@@ -16,7 +16,7 @@ proved the cells came across unchanged; only two things were edited by hand:
   all 120 orderings of the five arcs: the final value, the fortification set and
   even the iteration count are identical every time, but the intermediate trace
   takes one of TWO forms, and the claim about iteration 2 holds in only one of
-  them. The fix is `CLAUDE.md` Part 6's second remedy -- assert the invariants,
+  them. The fix is the Code Standard, Part 6's second remedy -- assert the invariants,
   teach the degeneracy.
 
 **This notebook has no agreement assertion, and that is the documented
@@ -29,7 +29,7 @@ from . import common
 NOTEBOOK = "00_concepts.ipynb"
 TITLE = "Part 0 - Concepts guide"
 
-# The documented exception to CLAUDE.md Part 4's agreement assertion. Stated
+# The documented exception to the Code Standard, Part 4's agreement assertion. Stated
 # here so `build.py --check` reports it, and repeated in the notebook's own
 # front matter so a reader meets it too.
 NO_AGREEMENT_ASSERTION = (

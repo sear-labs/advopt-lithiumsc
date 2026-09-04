@@ -32,5 +32,5 @@ keywords:
 #   3. Zenodo mints a VERSION doi and a CONCEPT doi
 #   4. add the CONCEPT doi here and commit
 # The concept DOI always resolves to the latest version and never changes, so
-# step 4 is a one-time edit and not a per-release chore. See CLAUDE.md Part 5,
+# step 4 is a one-time edit and not a per-release chore. See the Code Standard, Part 5,
 # "Every published repo carries a licence AND a citation".
