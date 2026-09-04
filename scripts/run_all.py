@@ -751,6 +751,40 @@ TS_TAU_OWN, TS_TAU_CROSS = 0.3, 1.5
 # 2b: demand only
 TS_SEED_B, TS_NK_B, TS_LO, TS_HI = 11, 24, 0.55, 1.55
 TS_SCALE_N = [24, 50, 100, 200]
+
+# The restricted `pip` licence caps LP/MILP at ~2,000 variables. This script
+# runs both on a laptop with a full licence and on a bare CI runner with only
+# the restricted one, so it ASKS rather than assuming: build a model past the
+# cap and see whether the solver refuses it.
+#
+# A notebook uses a FULL_LICENCE flag because a reader sets it by hand. A script
+# has no reader, and a hardcoded flag would be wrong on one of the two machines
+# it runs on -- which is how this section came to fail in CI while passing here.
+LICENCE_CAP = 2000
+
+
+def _licence_is_restricted():
+    # gurobipy is imported here rather than at module scope: this script drives
+    # the solver only through `lithium`, and the one place it needs the raw
+    # library is this probe.
+    import gurobipy as gp
+
+    probe = gp.Model()
+    probe.Params.OutputFlag = 0
+    probe.addVars(LICENCE_CAP + 500)
+    probe.update()
+    try:
+        probe.optimize()
+        return False
+    except gp.GurobiError as err:
+        if "size-limited" in str(err) or "too large" in str(err):
+            return True
+        raise                     # a different failure is not a licence answer
+    finally:
+        probe.dispose()
+
+
+RESTRICTED = _licence_is_restricted()
 # 2c: demand plus a region-specific cost shock
 TS_SEED_C, TS_NK_C = 7, 40
 TS_LO_C, TS_SPAN_C = 0.6, 0.9
@@ -813,27 +847,63 @@ def run_02b(ctx):
     print(f"\nboth variants reproduce {ef.ObjVal:.6f}; single cut takes "
           f"{cuts.iterations.iloc[1] / cuts.iterations.iloc[0]:.2f}x the iterations")
 
+    # The variable count is arithmetic and needs no solver, so the size
+    # argument is made at every n. Only the TIMING needs the monolith actually
+    # solved, and on a restricted licence the large ones cannot be -- which is
+    # this section's whole point, so the refusal is a result and not a problem.
+    # L-shaped runs at every size regardless, because it never builds it.
+    if RESTRICTED:
+        print(f"restricted licence: the extensive form is solved only where it "
+              f"fits {LICENCE_CAP:,} variables; L-shaped runs at every size.")
     rows = []
     for n in TS_SCALE_N:
         sc_n = L.demand_scenarios(st, n=n, seed=TS_SEED_B, lo=TS_LO, hi=TS_HI)
         m_n = T2.extensive_form(st, sc_n, mipgap=MIPGAP_TS)
+        # update() first: Gurobi batches model edits, so NumVars reads 0 on an
+        # un-updated model. Without this the size guard below compares 0 against
+        # the cap, decides everything fits, and hands the solver the very model
+        # it cannot take -- CLAUDE.md Part 6's silently empty object, which
+        # passes any assertion written against it. The shape assert is the
+        # guard that rule prescribes; the previous code read NumVars only AFTER
+        # optimize(), which is why it was accidentally right.
+        m_n.update()
+        assert m_n.NumVars > 0, "extensive form built empty"
+        fits = m_n.NumVars <= LICENCE_CAP
+        t_ef = None
+        if fits or not RESTRICTED:
+            t0 = time.time()
+            m_n.optimize()
+            t_ef = round(time.time() - t0, 2)
+        # SINGLE CUT here, not the multicut default. Multicut adds one cut
+        # per scenario per iteration -- 15 x 200 = 3,000 constraints at the top
+        # of this sweep -- and the restricted licence caps constraints as well
+        # as variables, so it fails at n=200 on the licence this section is
+        # about. Single cut adds one cut per iteration, 22 in total, at every
+        # size. Section 02b's multicut-vs-single comparison above runs at n=24,
+        # where both fit, so nothing is lost by scaling with the one that scales.
         t0 = time.time()
-        m_n.optimize()
-        t_ef = time.time() - t0
-        t0 = time.time()
-        r_n = L.lshaped(st, sc_n, max_iter=200, mipgap=MIPGAP_TS)
+        r_n = L.lshaped(st, sc_n, multicut=False, max_iter=200, mipgap=MIPGAP_TS)
         t_ls = time.time() - t0
-        rows.append(dict(n=n, EF_vars=m_n.NumVars, EF_sec=round(t_ef, 2),
+        rows.append(dict(n=n, EF_vars=m_n.NumVars, EF_sec=t_ef,
                          LS_sec=round(t_ls, 2), LS_iters=r_n["iters"],
-                         EF_fits_free_licence=m_n.NumVars <= 2000))
+                         EF_fits_free_licence=fits))
     scale = _show("02b_scaling", pd.DataFrame(rows))
     assert scale.LS_iters.nunique() == 1, (
         "the L-shaped iteration count moved with the scenario count; Part 2b's "
         "central claim is that it does not")
-    print(f"\niterations at every scenario count: {scale.LS_iters.iloc[0]}. "
-          f"The extensive form leaves the free licence behind at n = "
-          f"{scale[~scale.EF_fits_free_licence].n.min()}, and decomposition "
-          f"never builds it.")
+    assert (~scale.EF_fits_free_licence).any(), (
+        "every size fits the licence cap, so this section demonstrates nothing")
+    assert scale.EF_sec.notna().any(), (
+        "the extensive form was never solved at any size, so the comparison "
+        "this section makes has no data behind it")
+    print(f"\nsingle-cut iterations at every scenario count: "
+          f"{scale.LS_iters.iloc[0]}. The extensive form leaves the free licence "
+          f"behind at n = {scale[~scale.EF_fits_free_licence].n.min()}, and "
+          f"decomposition never builds it.")
+    print("But decomposition escapes the VARIABLE limit, not every limit: "
+          "multicut adds one cut per scenario per iteration and exceeds the "
+          "restricted licence's CONSTRAINT cap at n = 200, where single cut's "
+          "one-cut-per-iteration does not.")
 
     fig, ax = plt.subplots(figsize=(6.5, 4))
     hist = pd.DataFrame(L.lshaped(st, sc, mipgap=MIPGAP_TS)["hist"])

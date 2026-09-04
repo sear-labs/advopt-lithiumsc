@@ -57,11 +57,18 @@ bound. The two meet.
 
 ### Read this before you expect a speed-up
 
-| at n = 200 | extensive form | L-shaped |
-|---|---|---|
-| variables in the biggest model solved | **4,012** | master 212, subproblem 20 |
-| fits the restricted licence? | **no** | yes, at any n |
-| wall time | **faster** | slower, at every size tested |
+| at n = 200 | extensive form | L-shaped, single cut | L-shaped, multicut |
+|---|---|---|---|
+| variables in the biggest model solved | **4,012** | master **13**, subproblem 20 | master 212, subproblem 20 |
+| constraints added by cuts | — | 22, one per iteration | ~3,000, one per scenario per iteration |
+| fits the restricted licence? | **no** | **yes** | **no** |
+| wall time | **faster** | slower, at every size tested | slower |
+
+**The third column is the one worth pausing on.** Multicut is the better variant
+on iterations and it is the one that fails here — because the restricted licence
+caps *constraints* as well as variables, and multicut buys its faster convergence
+by adding a cut per scenario per iteration. Decomposition escapes the variable
+limit; it does not automatically escape every limit.
 
 **Decomposition loses on time here and wins on size.** Section 10 measures both
 rather than asserting them. Gurobi is extremely good at the monolithic model at
@@ -611,7 +618,32 @@ if not FULL_LICENCE:
           f"{', '.join(str(EF_VARS[n]) for n in SCALE_N if n not in EF_RUNNABLE)}"
           f" variables and the restricted licence would refuse it - which is this")
     print("section's whole point, so the refusal is the result and not a problem.")
-    print("L-shaped runs at EVERY size below regardless, because it never builds it.\n")
+    print("Single-cut L-shaped runs at EVERY size below, because it never builds it.\n")
+
+# Why single cut for the sweep, measured rather than asserted. Multicut adds one
+# cut PER SCENARIO per iteration, so its master grows in CONSTRAINTS even though
+# its variables stay small - and the restricted licence caps constraints too.
+n_big = SCALE_N[-1]
+try:
+    r_mc = lshaped(tree(n_big), max_iter=200, multicut=True, verbose=False)
+    m_mc = r_mc["master"]
+    m_mc.update()
+    print(f"multicut at n = {n_big}: master {m_mc.NumVars} variables, "
+          f"{m_mc.NumConstrs} constraints, {r_mc['iters']} iterations - accepted")
+    print("(you are on a full licence; on the restricted one this is refused)")
+except gp.GurobiError as err:
+    # The size argument is arithmetic and needs no solver, exactly like the
+    # extensive form's 12 + 20n above: the multicut master holds the same
+    # first-stage variables plus one theta per scenario, and gains one cut per
+    # scenario per iteration. So it can be stated even when it cannot be solved.
+    mc_vars = 2 * len(NODES) + n_big
+    print(f"multicut at n = {n_big}: REFUSED - {err}")
+    print(f"Its master would be {mc_vars} variables "
+          f"({2 * len(NODES)} first-stage + one theta per scenario) and gains "
+          f"{n_big} constraints per iteration.")
+    print("Its master is small in VARIABLES and large in CONSTRAINTS: one cut per")
+    print("scenario per iteration. Escaping a limit on variables is not escaping")
+    print("the limit. Single cut adds one cut per iteration and fits at every size.\n")
 
 rows = []
 for n in SCALE_N:
@@ -624,8 +656,12 @@ for n in SCALE_N:
         ef_sec, ef_obj = round(time.time() - t0, 2), m_n.ObjVal
         assert m_n.NumVars == EF_VARS[n], "the variable-count arithmetic is wrong"
 
+    # multicut=False. Multicut adds one cut PER SCENARIO per iteration, so at
+    # n = 200 its master reaches ~3,000 constraints - and the restricted licence
+    # caps constraints as well as variables. Single cut adds one cut per
+    # iteration, 22 in all, and fits at every size.
     t0 = time.time()
-    r_n = lshaped(sc_n, max_iter=200, verbose=False)
+    r_n = lshaped(sc_n, max_iter=200, multicut=False, verbose=False)
     t_ls = time.time() - t0
 
     rows.append(dict(n=n, EF_vars=EF_VARS[n], EF_fits=EF_VARS[n] <= LICENCE_CAP,
@@ -665,12 +701,20 @@ The `EF_vars` column is still filled in at every size, because it is arithmetic
 L-shaped has a number in every row.
 
 What changes is the model you have to build. At n = 200 the extensive form needs
-4,012 variables; the master needs 212 and each subproblem 20. On the restricted
-licence the monolithic model is simply unavailable past n ≈ 99, and the
+4,012 variables; the single-cut master needs **13** and each subproblem 20. On the
+restricted licence the monolithic model is simply unavailable past n ≈ 99, and the
 decomposition is unaffected because it never holds more than one scenario at a
 time.
 
-And the striking one: **the iteration count is 15 at every scenario count
+**With one caveat that is easy to state wrongly, and this notebook did.** The
+sweep above runs `multicut=False`. Multicut's master is only 212 variables at
+n = 200 — comfortably inside the cap — but it adds **one cut per scenario per
+iteration**, so 15 iterations at n = 200 is roughly 3,000 constraints, and the
+restricted licence caps constraints too. Measured: multicut solves at n = 24, 50
+and 100 and is refused at 200; single cut, one cut per iteration, fits at every
+size. *Escaping a limit on variables is not escaping the limit.*
+
+And the striking one: **the iteration count is 22 at every scenario count
 tested** — 24, 50, 100 and 200. The number of cuts needed is a property of the
 first-stage geometry, six nodes with open/close decisions, not of how many
 scenarios there are. That is the property that makes the method scale, and it is
@@ -706,7 +750,7 @@ duals
 ''')
 
     M(r"""
-At the optimal plan **51% of the capacity rows bind**, against 33% at zero
+At the optimal plan **51.4% of the capacity rows bind**, against 33.3% at zero
 capacity. That is the right direction: at zero capacity most nodes are so far
 from useful that the binding constraint is demand, not capacity, and the cut
 carries information about only a third of the nodes.
@@ -803,11 +847,11 @@ print("recourse values, the DUALS, both cut variants, and the whole path there")
 |---|---|
 | Does L-shaped reproduce the extensive form? | **Yes**, to 1e-9, and the bounds bracket the optimum |
 | Is it faster? | **No** — it loses at every size tested, and the assertion in section 10 says so |
-| Then what does it buy? | The extensive form needs 4,012 variables at n=200; the master needs 212 |
-| How many iterations? | **15**, at n = 24, 50, 100 and 200 alike |
-| Multicut or single cut? | Same optimum; single cut takes 1.47× the iterations and 528 subsolves against 360 |
+| Then what does it buy? | The extensive form needs 4,012 variables at n=200; the single-cut master needs 13 |
+| How many iterations? | **22** single cut, at n = 24, 50, 100 and 200 alike; 15 for multicut where it fits |
+| Multicut or single cut? | Same optimum; single cut takes 1.47× the iterations and 528 subsolves against 360 — but multicut's per-scenario cuts exceed the restricted licence's constraint cap at n = 200, and single cut does not |
 | Is the Benders gap a good stopping rule? | **Careful.** At iteration 10 the gap says 11% and the incumbent is 3.8% off |
-| Are the cuts informative? | 51% of capacity rows bind at the optimum, 33% at zero capacity |
+| Are the cuts informative? | 51.4% of capacity rows bind at the optimum, 33.3% at zero capacity |
 
 ### Formulation lessons
 

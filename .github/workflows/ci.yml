@@ -25,7 +25,11 @@ jobs:
           if git ls-files --error-unmatch gurobi.lic 2>/dev/null; then
             echo "gurobi.lic is tracked; it carries a live WLS secret"; exit 1
           fi
-          test -z "$(git ls-files '*.lic')" || { echo "a .lic file is tracked"; exit 1; }
+          # '*.lic' alone misses a RENAMED licence - gurobi.lic.aside, .bak, .old.
+          # Renaming one aside is a normal way to reproduce a restricted-licence
+          # run locally, and it drops the file out of a suffix-anchored pattern.
+          bad="$(git ls-files '*.lic' '*.lic.*' '*.lic-*')"
+          test -z "$bad" || { echo "a licence file is tracked: $bad"; exit 1; }
       - name: no credential in any tracked file's CONTENT
         # The path check above guards the *file* form of the credential. It cannot
         # see a key pasted into a notebook cell - which is exactly how one reached

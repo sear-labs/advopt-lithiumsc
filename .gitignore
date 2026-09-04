@@ -4,6 +4,12 @@
 # it carries its own list and does not rely on anyone's machine being set up.
 gurobi.lic
 *.lic
+*.lic.*
+# *.lic alone does not match a RENAMED licence file - gurobi.lic.aside,
+# gurobi.lic.bak, gurobi.lic.old. Renaming one aside to reproduce a
+# restricted-licence run is a normal thing to do and it silently drops the
+# file out of the ignore. Second instance of this pattern class today:
+# *.bak likewise missed dispatch-template.zip.bak-2026-09-04.
 *WLSKeyinfo*
 .env
 .env.*
