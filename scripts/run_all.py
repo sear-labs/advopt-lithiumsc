@@ -1122,6 +1122,28 @@ def run_03(ctx):
 
     # the finding: four variants, one decision
     n_distinct = len(set(plans.values()))
+    if n_distinct != 1:
+        # Say WHAT differs. This fired on a Linux runner while every plan on the
+        # development machine was bit-identical, and the table above cannot tell
+        # "same plan, last digits" from "different plan, same build count and
+        # nearly the same total" -- the two hypotheses that decide the fix.
+        ref_label, ref = next(iter(plans.items()))
+        print("")
+        print(f"!! {n_distinct} distinct plans; diffing against {ref_label!r}")
+        for label, pl in plans.items():
+            if pl == ref:
+                print(f"   {label}: identical")
+                continue
+            a, b = dict(ref), dict(pl)
+            only_ref = sorted(set(a) - set(b))
+            only_pl = sorted(set(b) - set(a))
+            moved = {k: (a[k], b[k]) for k in set(a) & set(b) if a[k] != b[k]}
+            print(f"   {label}:")
+            print(f"     built only in the reference : {only_ref}")
+            print(f"     built only here             : {only_pl}")
+            print(f"     same build, different size  : {sorted(moved)}")
+            for k, (x, y) in sorted(moved.items()):
+                print(f"        {k}: {x!r} vs {y!r}   diff {abs(x - y):.3e}")
     assert n_distinct == 1, (
         f"{n_distinct} distinct build plans among Part 3's four variants; the "
         f"notebook's central claim is that all four agree on the decision")
