@@ -905,9 +905,13 @@ flow network (4f) and the integrated core with its recycling loop (5).
 
   What is actually true, each part measured rather than recalled:
 
-  - **This repository's history is clean.** The scrub ran. The root commit now
-    reads `WLSACCESSID": "REDACTED-CREDENTIAL-ROTATED"`, and no UUID-shaped
-    literal survives in any of the 38 commits. Verified with the probe validated
+  - **This repository's history is clean.** The scrub ran: at every key site in
+    the root commit the value is now the literal `REDACTED-CREDENTIAL-ROTATED`,
+    and no UUID-shaped
+    literal survives in any of the 38 commits. *(Written that way round on
+    purpose — quoting the site and the value as an assignment trips
+    `credscan`, which is correct of it and was how this sentence's first draft
+    got caught.)* Verified with the probe validated
     first — a control search for a string known to be present returned four
     files before the real search returned none, because *a search that returns
     zero because it is broken and a search that returns zero because the work is
