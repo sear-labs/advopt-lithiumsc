@@ -37,7 +37,7 @@ def cells():
 
 ### Tariffs, quotas and local content, as exogenous levers
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04e_policy.ipynb)
 
 Every model so far has had firms responding only to each other. Here a government
 sets a lever first, and the firms re-optimise inside the world it creates. The

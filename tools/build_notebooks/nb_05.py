@@ -42,7 +42,7 @@ def cells():
 
 ### The only model here with a loop in it
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/05_integrated_core.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/05_integrated_core.ipynb)
 
 Every other model in this series moves material one way: dig it up, refine it,
 build something, sell it. This one adds the return leg. Packs sold ten years ago

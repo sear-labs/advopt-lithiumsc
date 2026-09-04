@@ -16,6 +16,31 @@ and asserts the two objectives agree to $10^{-9}$. See `CLAUDE.md` Part 4 for th
 
 ---
 
+## How to cite
+
+Licensed **MIT** — see [`LICENSE`](LICENSE). A licence sets the terms of reuse and does *not* get the
+work cited; those are two mechanisms, so this repo carries both. [`CITATION.cff`](CITATION.cff) drives
+GitHub's **"Cite this repository"** button, which is the point: people cite what is easy to cite, and
+friction is what stops them.
+
+```bibtex
+@software{jones_advopt_lithiumsc,
+  author  = {Jones, Erick C., Jr.},
+  title   = {Advanced Optimization Modeling: a lithium supply-chain series},
+  year    = {2026},
+  url     = {https://github.com/sear-labs/advopt-lithiumsc},
+  license = {MIT}
+}
+```
+
+**There is no DOI yet, and that is the correct order rather than an omission** — a DOI cannot exist
+before a release. Once the repo is connected to Zenodo and a release is tagged, Zenodo mints two: a
+*version* DOI that changes every release, and a *concept* DOI that always resolves to the latest and
+never changes. The concept DOI goes in `CITATION.cff` once and is then correct for the life of the
+repo.
+
+---
+
 ## Run it
 
 ```bash
@@ -41,25 +66,31 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 
 | Notebook | What it covers | |
 |---|---|---|
-| `notebooks/00_start_here.ipynb` | **Start here.** Holds no model: it calls the package and reproduces every headline number in under a minute, so you know the install works | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_start_here.ipynb) |
-| `notebooks/00_concepts.ipynb` | The concepts guide: 23 short sections, each an explanation plus one demo small enough to check by hand. Also the shape every other notebook was written toward | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_concepts.ipynb) |
-| `notebooks/01_deterministic.ipynb` | The deterministic network MILP, and four modelling choices that move the answer more than the data does: capex timing, investment granularity, learning, foresight | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/01_deterministic.ipynb) |
-| `notebooks/02_stochastic.ipynb` | Two-stage stochastic programming: nonanticipativity, EVPI and VSS, and why VSS measures how much you commit rather than how uncertain you are; progressive hedging and its rho trap | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02_stochastic.ipynb) |
-| `notebooks/02b_benders.ipynb` | Benders / L-shaped decomposition: cuts from recourse duals, multicut against single cut, and what decomposition actually buys (it is not speed) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02b_benders.ipynb) |
-| `notebooks/02c_cvar.ipynb` | CVaR, minimax and a hybrid; why a solution vector is not a set of results, and how one plan reported three different average costs | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02c_cvar.ipynb) |
-| `notebooks/03_network_core.ipynb` | The network-core MILP built block by block: semi-continuous sizing, vintage yields, SOS2 learning — and four variants that share one build plan | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03_network_core.ipynb) |
-| `notebooks/03b_production_learning.ipynb` | A second learning channel, separable from the first; whether a planner would overproduce to learn faster; local content as the lever that forces disposal | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03b_production_learning.ipynb) |
-| `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
-| `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
-| `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
-| `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
-| `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb) |
-| `notebooks/04f_interdiction.ipynb` | Defender-attacker-operator: the attacker via LP duality, Best Response Intersection, and a plausible heuristic that loses 5 units of throughput | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04f_interdiction.ipynb) |
-| `notebooks/05_integrated_core.ipynb` | The closed loop: packs sold a decade ago return as feedstock; what that is worth, and the collapse invariant that checks the flow logic | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/05_integrated_core.ipynb) |
+| `notebooks/00_start_here.ipynb` | **Start here.** Holds no model: it calls the package and reproduces every headline number in under a minute, so you know the install works | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/00_start_here.ipynb) |
+| `notebooks/00_concepts.ipynb` | The concepts guide: 23 short sections, each an explanation plus one demo small enough to check by hand. Also the shape every other notebook was written toward | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/00_concepts.ipynb) |
+| `notebooks/01_deterministic.ipynb` | The deterministic network MILP, and four modelling choices that move the answer more than the data does: capex timing, investment granularity, learning, foresight | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/01_deterministic.ipynb) |
+| `notebooks/02_stochastic.ipynb` | Two-stage stochastic programming: nonanticipativity, EVPI and VSS, and why VSS measures how much you commit rather than how uncertain you are; progressive hedging and its rho trap | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02_stochastic.ipynb) |
+| `notebooks/02b_benders.ipynb` | Benders / L-shaped decomposition: cuts from recourse duals, multicut against single cut, and what decomposition actually buys (it is not speed) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02b_benders.ipynb) |
+| `notebooks/02c_cvar.ipynb` | CVaR, minimax and a hybrid; why a solution vector is not a set of results, and how one plan reported three different average costs | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02c_cvar.ipynb) |
+| `notebooks/03_network_core.ipynb` | The network-core MILP built block by block: semi-continuous sizing, vintage yields, SOS2 learning — and four variants that share one build plan | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/03_network_core.ipynb) |
+| `notebooks/03b_production_learning.ipynb` | A second learning channel, separable from the first; whether a planner would overproduce to learn faster; local content as the lever that forces disposal | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/03b_production_learning.ipynb) |
+| `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04ab_planner_and_game.ipynb) |
+| `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04c_cournot.ipynb) |
+| `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04c_exact_miqp.ipynb) |
+| `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04d_stackelberg.ipynb) |
+| `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04e_policy.ipynb) |
+| `notebooks/04f_interdiction.ipynb` | Defender-attacker-operator: the attacker via LP duality, Best Response Intersection, and a plausible heuristic that loses 5 units of throughput | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04f_interdiction.ipynb) |
+| `notebooks/05_integrated_core.ipynb` | The closed loop: packs sold a decade ago return as feedstock; what that is worth, and the collapse invariant that checks the flow logic | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/05_integrated_core.ipynb) |
 
 The badge is a one-click path: it clones this repo, `pip install -e .`, and runs. No local software
-and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
-notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
+and no account beyond a Google login. Every badge and every install line names
+`sear-labs/advopt-lithiumsc`, so they resolve as written — there is no placeholder left to fill in.
+
+**If this repo is ever renamed, two values change and only one looks like a placeholder.** The badges
+used to read `USERNAME/lithium-modelling`: the owner announced itself, and the repo name sat beside it
+reading like a real name. Substituting the obvious half left 64 URLs pointing at a repository that did
+not exist — a failure that presents as a Colab problem rather than a naming one. Count both, and count
+them again immediately before the replace.
 
 **The migration is complete.** All fifteen notebooks live in `notebooks/`, are generated from
 `tools/build_notebooks/`, and ship executed. The pre-migration originals that used to sit at the

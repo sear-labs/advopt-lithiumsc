@@ -42,7 +42,7 @@ def cells():
 
 ### Two channels, and neither of them changes the plan much
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03b_production_learning.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/03b_production_learning.ipynb)
 
 Part 3 had one learning channel: build more capacity, and capacity gets cheaper.
 That is learning-by-*building*. It is also only half of what the literature means

@@ -38,7 +38,7 @@ def cells():
 
 ### Four variants, one plan
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03_network_core.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/03_network_core.ipynb)
 
 This is the model the rest of the series keeps referring back to: three stages,
 two regions, a 39-year horizon on a variable-length mesh, facilities that must be

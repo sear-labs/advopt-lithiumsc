@@ -37,7 +37,7 @@ def cells():
 
 ### What the approximation cost, and where that cost stops being predictable
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04c_exact_miqp.ipynb)
 
 Part 4c piecewise-linearised the quadratic revenue to keep the model a MILP, and
 argued the approximation was safe: revenue is concave, we maximise, so every

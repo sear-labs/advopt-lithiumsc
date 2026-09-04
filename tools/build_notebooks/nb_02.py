@@ -39,7 +39,7 @@ def cells():
 
 ### What it is worth knowing the future, and what it is worth admitting you don't
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02_stochastic.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02_stochastic.ipynb)
 
 Part 1's network, with one thing changed: **Region 2's demand growth is
 uncertain**. Three scenarios, known probabilities, and a build plan for year 1

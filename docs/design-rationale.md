@@ -23,7 +23,7 @@ student can open in Colab and actually follow.
 ## 1. The shape
 
 ```
-lithium-modelling/
+advopt-lithiumsc/
 ├── CLAUDE.md               the two standards and the boundary between them
 ├── README.md               install, run, what is committed, the Colab index
 ├── pyproject.toml          pinned, `pip install -e .`
@@ -172,7 +172,7 @@ try:
     import google.colab                                    # noqa: F401
     IN_COLAB = True
     %pip install -q "gurobipy>=13,<14" "pandas>=2,<3" "matplotlib>=3.8,<4"
-    %pip install -q "git+https://github.com/USER/lithium-modelling@v1.0"
+    %pip install -q "git+https://github.com/sear-labs/advopt-lithiumsc@v1.0"
 except ImportError:
     IN_COLAB = False        # local: assumes `pip install -e .`
 

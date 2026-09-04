@@ -35,7 +35,7 @@ def cells():
 
 ### It is slower. That is not the point.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02b_benders.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02b_benders.ipynb)
 
 Part 2 hit a wall: the extensive form replicates the whole model once per
 scenario, so it stops fitting. Progressive hedging was one way around it. This is

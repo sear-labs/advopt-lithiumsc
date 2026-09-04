@@ -35,7 +35,7 @@ def cells():
 
 ### Four things that look like economics and are really modelling choices
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/01_deterministic.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/01_deterministic.ipynb)
 
 A six-site network — two mines, two processors, two fabricators — serving two
 regions over twenty years. One decision maker, perfect information, and lumpy

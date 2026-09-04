@@ -55,7 +55,7 @@ def _sub(text, **numbers):
     return text
 
 
-def setup_section(repo="lithium-modelling", notebook="04c_cournot.ipynb"):
+def setup_section(repo="advopt-lithiumsc", notebook="04c_cournot.ipynb"):
     """Section 0: the Colab bootstrap. The only place the package appears
     before the agreement assertion."""
     out, M, C = _cells()
@@ -73,7 +73,9 @@ import subprocess
 import sys
 from pathlib import Path
 
-REPO_URL = "https://github.com/USERNAME/lithium-modelling.git"   # <-- edit me
+REPO_URL = "https://github.com/sear-labs/advopt-lithiumsc.git"
+# Forked or renamed? Change BOTH halves of that path. Only the owner ever
+# looked like a placeholder, and the repo name beside it broke 64 URLs once.
 REPO_NAME = REPO_URL.rstrip("/").split("/")[-1].replace(".git", "")
 
 if "google.colab" in sys.modules:

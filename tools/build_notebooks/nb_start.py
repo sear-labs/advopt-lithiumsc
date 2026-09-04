@@ -42,7 +42,7 @@ def cells():
 
 ### Sixty seconds to know whether any of this works
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_start_here.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/00_start_here.ipynb)
 
 This notebook **contains no model.** Every cell below imports the `lithium`
 package and calls it. Run it top to bottom; if it finishes, your install works

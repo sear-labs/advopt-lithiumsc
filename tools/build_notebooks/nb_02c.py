@@ -36,7 +36,7 @@ def cells():
 
 ### Same model as Part 2b. Different question.
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02c_cvar.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/02c_cvar.ipynb)
 
 Part 2b asked *how do I solve this*. This one asks *what am I solving for*.
 Minimising the expectation is a choice, and it is the choice that says a one-in-

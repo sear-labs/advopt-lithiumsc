@@ -26,7 +26,7 @@ def cells():
 
 ### Where flooding the market becomes rational
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04c_cournot.ipynb)
 
 Part 4b had a **fixed** price, so rivalry was a pure race for a capped market and the only channel
 between firms was residual demand. That produced two artefacts: a large first-mover advantage, and

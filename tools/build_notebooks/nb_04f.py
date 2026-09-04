@@ -39,7 +39,7 @@ def cells():
 
 ### Three levels, and the middle one needs duality
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04f_interdiction.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04f_interdiction.ipynb)
 
 Every other notebook in this series asks *what should be built*. This one asks
 something different: the chain already exists, so **what breaks it, and what is

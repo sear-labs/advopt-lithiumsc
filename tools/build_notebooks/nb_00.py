@@ -60,7 +60,7 @@ def cells():
 
 ### The operations research behind Parts 1 to 5, one idea at a time
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_concepts.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/00_concepts.ipynb)
 
 **This is a reference, not a model.** Each section states one concept, says where
 it shows up in the series, and then demonstrates it on numbers small enough to

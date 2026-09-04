@@ -36,7 +36,7 @@ def cells():
 
 ### Where one objective function stops being enough
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04ab_planner_and_game.ipynb)
 
 Parts 1–3b all had **one** objective, which means one decision maker. This
 notebook takes the first two steps toward rivalry:

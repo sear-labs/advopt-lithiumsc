@@ -36,7 +36,7 @@ def cells():
 
 ### Collapsing a bilevel program using the follower's KKT conditions
 
-[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/sear-labs/advopt-lithiumsc/blob/main/notebooks/04d_stackelberg.ipynb)
 
 In Cournot (Part 4c) both firms move simultaneously. Here the **leader commits
 first** and the follower observes that commitment before choosing its own output
