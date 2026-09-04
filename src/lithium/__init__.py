@@ -44,6 +44,15 @@ from .structure import Structure, build_structure
 # `recourse` and `risk_model` act on a different instance from the
 # same-named things in `stochastic` and `core`, and flattening them would
 # shadow one with the other. See twostage.py's docstring.
+from . import integrated
+from .integrated import (IntegratedInstance, collapse_test,
+                         load_integrated_instance, periods_from_plan,
+                         recycled_share)
+from . import interdiction
+from .interdiction import (FlowNetwork, InterdictionInstance,
+                           attacker_best_response, best_response_intersection,
+                           build_flow_network, critical_arcs, defender_enumerate,
+                           defender_master, load_interdiction_instance, max_flow)
 from . import netcore
 from .netcore import (NetCoreInstance, NetCoreStructure, build_netcore,
                       build_netcore_structure, calibrate_tiers,
@@ -72,6 +81,12 @@ __all__ = [
     "wait_and_see", "mean_value_stage1", "eval_strategy_by_scenario",
     "strategy_stage1", "perfect_info_by_scenario",
     "three_case_comparison", "ph_three_case",
+    "integrated", "IntegratedInstance", "load_integrated_instance",
+    "periods_from_plan", "recycled_share", "collapse_test",
+    "interdiction", "InterdictionInstance", "FlowNetwork",
+    "load_interdiction_instance", "build_flow_network", "max_flow",
+    "attacker_best_response", "defender_enumerate", "defender_master",
+    "best_response_intersection", "critical_arcs",
     "netcore", "NetCoreInstance", "NetCoreStructure",
     "load_netcore_instance", "build_netcore_structure", "build_netcore",
     "solve_netcore", "netcore_plan", "calibrate_tiers", "utilization",

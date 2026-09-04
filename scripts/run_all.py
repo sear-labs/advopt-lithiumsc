@@ -35,6 +35,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 import lithium as L                                          # noqa: E402
 from lithium import twostage as T2                           # noqa: E402
+from lithium import integrated as IC                         # noqa: E402
+from math import comb                                        # noqa: E402
 
 ROOT = Path(__file__).resolve().parents[1]
 TABLES = ROOT / "results" / "tables"
@@ -1221,13 +1223,221 @@ def run_03b(ctx):
     return dict(variants=variants, util=util, dump=dump, lcr=lcr)
 
 
+# ==========================================================================
+# Part 4f uses a FIFTH instance (a max-flow network, no time and no money) and
+# Part 5 a SIXTH (five stages plus a recycling loop). Neither shares anything
+# with the others beyond vocabulary.
+
+# ---- knobs, Part 4f ------------------------------------------------------
+ID_STAGES = ("MINE", "REF", "CAM", "CELL")
+ID_CAP_INTRA, ID_CAP_INTER = 40.0, 16.0
+ID_BATK = 3                      # attacker budget the defence sections use
+ID_DEFENCE_BUDGETS = [1, 2]
+ID_SCALE_BUDGETS = [1, 2, 3, 4]
+
+# ---- knobs, Part 5 -------------------------------------------------------
+P5_PERIOD_PLAN = [(6, 1), (4, 3), (3, 5)]
+P5_RHO, P5_CAP_MIN, P5_CAP_MAX = 0.05, 8.0, 60.0
+P5_TAU_INTRA, P5_TAU_INTER, P5_PENALTY = 0.3, 1.6, 40.0
+P5_PACK_LIFE, P5_RECOVERY, P5_DEMAND_GROWTH = 10, 0.55, 0.045
+# 1e-4, not 0.005: run_02c-style, the dual-feedstock value is 2.2% and a
+# half-percent tolerance sits uncomfortably close to it. Verified unchanged
+# from 5e-3 to 1e-5 on this instance.
+MIPGAP_P5 = 1e-4
+
+
+def setup_interdiction(source):
+    inst = L.load_interdiction_instance(source)
+    net = L.build_flow_network(inst, stages=ID_STAGES, cap_intra=ID_CAP_INTRA,
+                               cap_inter=ID_CAP_INTER)
+    print(f"interdiction network: {len(net.nodes)} nodes, {len(net.arcs)} arcs, "
+          f"{len(net.attackable)} interdictable")
+    return dict(inst=inst, net=net)
+
+
+def setup_integrated(source):
+    inst = L.load_integrated_instance(source)
+    print(f"integrated core: chain {' -> '.join(inst.chain)} plus "
+          f"{inst.recycle_stage}")
+    return dict(inst=inst)
+
+
+# ==========================================================================
+def run_04f(ctx):
+    """Part 4f - interdiction, defence, and a heuristic that fails."""
+    net = ctx["id"]["net"]
+    print("\n=== 04f: interdiction and defence ===")
+
+    base, _ = L.max_flow(net)
+    rows = []
+    for b in range(0, 7):
+        val, atk = L.attacker_best_response(net, b)
+        direct, _ = L.max_flow(net, interdicted=atk)
+        # the dual formulation must reproduce the primal it replaces; a wrong
+        # dual returns plausible numbers and no error
+        assert abs(val - direct) < 1e-6, (
+            f"budget {b}: the min-cut MILP says {val:.4f} but the operator's own "
+            f"LP achieves {direct:.4f} under that exact attack")
+        rows.append(dict(budget=b, throughput=round(val, 2),
+                         loss=round(base - val, 2),
+                         loss_pct=round(100 * (base - val) / base, 1),
+                         attack="; ".join(sorted(f"{a[0]}->{a[1]}" for a in atk))))
+    damage = _show("04f_damage_curve", pd.DataFrame(rows))
+    assert damage.throughput.is_monotonic_decreasing, \
+        "throughput rose with a larger attacker budget, which is impossible"
+    print(f"\nundisrupted throughput {base:.1f}; the min-cut MILP reproduces the "
+          f"operator's max-flow at every budget")
+
+    rows, defence = [], {}
+    for bdef in ID_DEFENCE_BUDGETS:
+        ev, ef, _ = L.defender_enumerate(net, bdef, ID_BATK)
+        r = L.best_response_intersection(net, bdef, ID_BATK)
+        assert abs(ev - r["value"]) < 1e-6, (
+            f"defend {bdef}: BRI got {r['value']:.4f}, enumeration {ev:.4f}")
+        assert all(h["UB"] >= h["LB"] - 1e-9 for h in r["hist"]), \
+            "a BRI upper bound fell below its lower bound"
+        defence[bdef] = ev
+        rows.append(dict(defence_budget=bdef, enumeration=round(ev, 3),
+                         BRI=round(r["value"], 3), bri_iterations=r["iters"],
+                         enum_attacker_solves=comb(len(net.attackable), bdef),
+                         bri_attacker_solves=r["attacker_solves"]))
+    dad = _show("04f_defence", pd.DataFrame(rows))
+    no_def, _ = L.attacker_best_response(net, ID_BATK)
+    print(f"\nattacker budget {ID_BATK} destroys {base - no_def:.1f} of {base:.1f}; "
+          f"{ID_DEFENCE_BUDGETS[-1]} arcs of defence restore "
+          f"{defence[ID_DEFENCE_BUDGETS[-1]] - no_def:.1f}")
+
+    # the candidate-restriction trap: a plausible economy that loses throughput
+    seen = set()
+    for b in range(1, ID_BATK + 3):
+        _, atk = L.attacker_best_response(net, b)
+        seen |= set(atk)
+    restricted = sorted(seen)
+    rows = []
+    for bdef in ID_DEFENCE_BUDGETS:
+        rv, _, _ = L.defender_enumerate(net, bdef, ID_BATK, candidates=restricted)
+        rows.append(dict(defence_budget=bdef, full_set=round(defence[bdef], 3),
+                         restricted_set=round(rv, 3),
+                         throughput_lost=round(defence[bdef] - rv, 3)))
+    trap = _show("04f_candidate_trap", pd.DataFrame(rows))
+    assert (trap.restricted_set <= trap.full_set + 1e-9).all(), \
+        "the restricted candidate set beat the full one, which is impossible"
+    assert trap.throughput_lost.max() > 1e-6, (
+        "restricting the defender's candidates cost nothing here; Part 4f "
+        "section 9's whole point is that it does, so the prose would need "
+        "rewriting rather than the assertion relaxing")
+    print(f"restricting the defender's candidates to the {len(restricted)} arcs an "
+          f"unfortified attacker picks loses {trap.throughput_lost.max():.2f} "
+          f"units - fortifying an arc changes which arcs are worth attacking")
+
+    rows = []
+    for bdef in ID_SCALE_BUDGETS:
+        r = L.best_response_intersection(net, bdef, ID_BATK)
+        rows.append(dict(defence_budget=bdef,
+                         enumeration_solves=comb(len(net.attackable), bdef),
+                         bri_attacker_solves=r["attacker_solves"],
+                         value=round(r["value"], 2)))
+    scale = _show("04f_scaling", pd.DataFrame(rows))
+    print(f"at defence budget {ID_SCALE_BUDGETS[-1]}, enumeration needs "
+          f"{scale.enumeration_solves.iloc[-1]:,} attacker MILPs against BRI's "
+          f"{scale.bri_attacker_solves.iloc[-1]}")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    ax.plot(damage.budget, damage.throughput, "o-", color=RED, lw=2)
+    ax.axhline(base, color=BLUE, ls="--", lw=1.2, label="undisrupted")
+    ax.set_xlabel("attacker budget (arcs cut)")
+    ax.set_ylabel("throughput")
+    ax.set_title("Part 4f: damage per unit of attacker budget")
+    ax.legend()
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "04f_damage.png", dpi=150)
+    plt.close(fig)
+    return dict(damage=damage, defence=dad, trap=trap, scale=scale)
+
+
+# ==========================================================================
+def run_05(ctx):
+    """Part 5 - the integrated core, and what a closed loop is worth."""
+    inst = ctx["p5"]["inst"]
+    kw = dict(period_plan=P5_PERIOD_PLAN, rho=P5_RHO, cap_min=P5_CAP_MIN,
+              cap_max=P5_CAP_MAX, tau_intra=P5_TAU_INTRA, tau_inter=P5_TAU_INTER,
+              penalty=P5_PENALTY, pack_life=P5_PACK_LIFE, recovery=P5_RECOVERY,
+              demand_growth=P5_DEMAND_GROWTH, mipgap=MIPGAP_P5)
+    print("\n=== 05: the integrated core ===")
+
+    on = IC.build(inst, allow_dual_feedstock=True, **kw)
+    on.optimize()
+    assert on.SolCount > 0, "the base model found no solution"
+    off = IC.build(inst, allow_dual_feedstock=False, **kw)
+    off.optimize()
+    assert off.ObjVal > on.ObjVal, (
+        "turning the loop off made the problem cheaper, which is impossible - "
+        "check that the rec_sink constraint is present")
+    print(f"dual feedstock ON {on.ObjVal:,.4f} | OFF {off.ObjVal:,.4f} | "
+          f"the loop is worth {off.ObjVal - on.ObjVal:,.2f} "
+          f"({100 * (off.ObjVal - on.ObjVal) / off.ObjVal:.2f}%)")
+
+    plan = _show("05_plan", pd.DataFrame(
+        [dict(stage=s, region=r, vintage=v, year=yr, size=sz)
+         for (s, r, v, yr, sz) in IC.build_plan(on)]))
+    rec = plan[plan.stage == inst.recycle_stage]
+    assert len(rec) > 0, "no recycling capacity was built; the loop is inert"
+    assert (plan["size"] >= P5_CAP_MIN - 1e-6).all(), \
+        "a facility was built below the semi-continuous floor"
+    print(f"{len(plan)} facilities, {len(rec)} of them recycling, first in year "
+          f"{rec.year.min()}")
+
+    loop = _show("05_recycled_share", pd.DataFrame(IC.recycled_share(on)))
+    early = loop[loop.year < P5_PACK_LIFE]
+    assert (early.recycled < 1e-6).all(), (
+        f"recycled material appeared before year {P5_PACK_LIFE}, which is before "
+        f"any pack could have been scrapped")
+    print(f"recycled share reaches {loop.share_pct.max():.1f}% of cathode feed "
+          f"by year {loop.loc[loop.share_pct.idxmax(), 'year']} - a quarter of "
+          f"the feed for a fortieth of the cost")
+
+    # the structural invariant: identical free-trading regions must collapse
+    ct = L.collapse_test(inst, **{k: v for k, v in kw.items() if k != "mipgap"})
+    _show("05_collapse_test", pd.DataFrame([
+        dict(measure="LP relaxation", multi=round(ct["lp_multi"], 6),
+             single=round(ct["lp_single"], 6), relative=f"{ct['rel_lp']:.3e}",
+             role="the test"),
+        dict(measure="MILP", multi=round(ct["ip_multi"], 4),
+             single=round(ct["ip_single"], 4), relative=f"{ct['rel_ip']:.3e}",
+             role="diagnostic only (integer lumpiness)")]))
+    assert ct["passed"], (
+        f"the collapse invariant failed at {ct['rel_lp']:.2e} - two identical "
+        f"free-trading regions no longer reduce to one, so the arc or balance "
+        f"logic is wrong")
+    print(f"collapse invariant holds to {ct['rel_lp']:.2e} on the LP relaxation; "
+          f"integer lumpiness contributes {100 * ct['rel_ip']:.2f}%")
+
+    fig, ax = plt.subplots(figsize=(6.5, 4))
+    ax.bar(loop.year, loop.recycled, width=1.6, color=GREEN, label="recycled")
+    ax.bar(loop.year, loop.fresh, width=1.6, bottom=loop.recycled, color=BLUE,
+           label="fresh")
+    ax.set_xlabel("year")
+    ax.set_ylabel("cathode feed")
+    ax.set_title("Part 5: the loop takes a decade to start")
+    ax.legend()
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(FIGURES / "05_recycled_share.png", dpi=150)
+    plt.close(fig)
+    return dict(plan=plan, loop=loop, collapse=ct)
+
+
 # Sections are grouped by which setup they need, so `--only 02` never pays for
 # the Part 4 planner calibration and `--only 4c` never loads the network.
 NET_SECTIONS = {"01": run_01, "02": run_02}
 TS_SECTIONS = {"02b": run_02b, "02c": run_02c}
 NC_SECTIONS = {"03": run_03, "03b": run_03b}
+ID_SECTIONS = {"04f": run_04f}
+P5_SECTIONS = {"05": run_05}
 CHAIN_SECTIONS = {"4ab": run_4ab, "4c": run_4c, "4d": run_4d, "4e": run_4e}
-SECTIONS = {**NET_SECTIONS, **TS_SECTIONS, **NC_SECTIONS, **CHAIN_SECTIONS}
+SECTIONS = {**NET_SECTIONS, **TS_SECTIONS, **NC_SECTIONS, **CHAIN_SECTIONS,
+            **ID_SECTIONS, **P5_SECTIONS}
 
 
 def main() -> None:
@@ -1270,6 +1480,10 @@ def main() -> None:
         ctx["ts"] = setup_twostage(source)
     if any(n in NC_SECTIONS for n in wanted):
         ctx["nc"] = setup_netcore(source)
+    if any(n in ID_SECTIONS for n in wanted):
+        ctx["id"] = setup_interdiction(source)
+    if any(n in P5_SECTIONS for n in wanted):
+        ctx["p5"] = setup_integrated(source)
     if any(n in CHAIN_SECTIONS for n in wanted):
         ctx.update(setup(source, max_iter=6 if args.quick else 16))
     for name in wanted:

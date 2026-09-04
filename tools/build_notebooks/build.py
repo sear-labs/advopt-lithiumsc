@@ -51,6 +51,8 @@ BUILDERS = {
     "04c_exact": "build_notebooks.nb_04c_exact",
     "04d": "build_notebooks.nb_04d",
     "04e": "build_notebooks.nb_04e",
+    "04f": "build_notebooks.nb_04f",
+    "05": "build_notebooks.nb_05",
 }
 
 # what the shipped kernel actually ran; keep this matching reality (rule 3)

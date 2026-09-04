@@ -50,6 +50,8 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 | `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
 | `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
 | `notebooks/04e_policy.ipynb` | Tariffs, quotas and local content as exogenous levers; welfare accounting; why a tariff beats a quota | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04e_policy.ipynb) |
+| `notebooks/04f_interdiction.ipynb` | Defender-attacker-operator: the attacker via LP duality, Best Response Intersection, and a plausible heuristic that loses 5 units of throughput | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04f_interdiction.ipynb) |
+| `notebooks/05_integrated_core.ipynb` | The closed loop: packs sold a decade ago return as feedstock; what that is worth, and the collapse invariant that checks the flow logic | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/05_integrated_core.ipynb) |
 
 The badge is a one-click path: it clones this repo, `pip install -e .`, and runs. No local software
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
@@ -98,6 +100,8 @@ notebooks/                the teaching track
   04c_exact_miqp.ipynb      the exact MIQP; SMALL=True fits the free licence
   04d_stackelberg.ipynb     the MPEC by hand; carries 04c's chain over, marked
   04e_policy.ipynb          the three levers by hand; carries 04c and 04d over, marked
+  04f_interdiction.ipynb   interdiction by hand; duality, and a heuristic failing
+  05_integrated_core.ipynb  the closed loop, and the collapse invariant
 
 tools/
   build_notebooks/          the notebooks' source of truth; build.py generates and audits

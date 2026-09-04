@@ -1,0 +1,8 @@
+stage,region,legacy_cap
+MINE,R1,12.0
+PROC,R1,10.0
+CATH,R1,8.0
+CELL,R1,8.0
+PACK,R1,8.0
+MINE,R2,6.0
+PROC,R2,5.0

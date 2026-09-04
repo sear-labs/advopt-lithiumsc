@@ -767,6 +767,161 @@ def test_netcore_cumulative_production_is_undiscounted(nc):
         "cumulative production is discounted; a knowledge stock must not be"
 
 
+# --------------------------------------------------------------------------
+# Part 4f: interdiction
+
+
+@pytest.fixture(scope="module")
+def idnet():
+    inst = L.load_interdiction_instance(ROOT / "data" / "raw")
+    return L.build_flow_network(inst)
+
+
+def test_super_source_and_sink_are_not_attackable(idnet):
+    """They stand for a reserve base and a demand aggregate, not for links.
+
+    Leave them attackable and the attacker cuts the three source arcs; the
+    problem becomes trivial and the notebook has nothing to say.
+    """
+    for a in idnet.attackable:
+        assert a[0] != "SRC" and a[1] != "SNK"
+    assert len(idnet.attackable) == len(idnet.arcs) - 2 * len(idnet.inst.regions)
+
+
+def test_attacker_dual_reproduces_the_primal_it_replaces(idnet):
+    """The whole method rests on max-flow == min-cut.
+
+    A wrong dual does not crash - it returns numbers that look like throughput.
+    The only check is to hand its chosen attack to the operator's own LP.
+    """
+    for budget in (0, 1, 2, 3, 4):
+        val, attack = L.attacker_best_response(idnet, budget)
+        direct, _ = L.max_flow(idnet, interdicted=attack)
+        assert abs(val - direct) < 1e-6, (
+            f"budget {budget}: min-cut says {val:.4f}, the operator achieves "
+            f"{direct:.4f} under that exact attack")
+        assert len(attack) <= budget
+
+
+def test_more_attacker_budget_never_helps_the_operator(idnet):
+    vals = [L.attacker_best_response(idnet, b)[0] for b in range(0, 5)]
+    assert all(vals[i] >= vals[i + 1] - 1e-9 for i in range(len(vals) - 1)), \
+        f"throughput rose with a bigger attacker budget: {vals}"
+
+
+def test_bri_reproduces_enumeration(idnet):
+    """The value must match. The fortification need not - ties are real here."""
+    for bdef in (1, 2):
+        ev, _ef, _ = L.defender_enumerate(idnet, bdef, 3)
+        r = L.best_response_intersection(idnet, bdef, 3)
+        assert abs(ev - r["value"]) < 1e-6
+        assert all(h["UB"] >= h["LB"] - 1e-9 for h in r["hist"]), \
+            "an upper bound fell below a lower bound"
+
+
+def test_restricting_defender_candidates_can_lose_throughput(idnet):
+    """Part 4f section 9's finding, pinned from both sides.
+
+    The restricted set can never beat the full one, and on this instance it
+    must actually lose something - otherwise the notebook's central negative
+    result has gone and its prose needs rewriting.
+    """
+    seen = set()
+    for b in range(1, 6):
+        _, atk = L.attacker_best_response(idnet, b)
+        seen |= set(atk)
+    restricted = sorted(seen)
+    lost_somewhere = False
+    for bdef in (1, 2):
+        full, _, _ = L.defender_enumerate(idnet, bdef, 3)
+        rest, _, _ = L.defender_enumerate(idnet, bdef, 3, candidates=restricted)
+        assert rest <= full + 1e-9, "the restricted set beat the full set"
+        if rest < full - 1e-6:
+            lost_somewhere = True
+    assert lost_somewhere, (
+        "restricting the candidates cost nothing on this instance; Part 4f "
+        "section 9 says it does")
+
+
+# --------------------------------------------------------------------------
+# Part 5: the integrated core
+
+
+@pytest.fixture(scope="module")
+def p5():
+    return L.load_integrated_instance(ROOT / "data" / "raw")
+
+
+def test_integrated_instance_separates_chain_from_loop(p5):
+    assert p5.recycle_stage not in p5.chain
+    assert p5.stages == p5.chain + (p5.recycle_stage,)
+    assert all(0 < y <= 1 for y in p5.yield_.values())
+
+
+def test_period_weights_tile_the_horizon(p5):
+    """A weight that does not tile means years counted twice or not at all,
+    and the objective would still look reasonable."""
+    plan = ((6, 1), (4, 3), (3, 5))
+    lens, starts, H = L.periods_from_plan(plan)
+    rho = 0.05
+    omega = {p: sum((1 + rho) ** -(starts[p] + k) for k in range(lens[p]))
+             for p in range(len(lens))}
+    assert abs(sum(omega.values()) - sum((1 + rho) ** -t for t in range(H))) < 1e-9
+
+
+def test_recycling_cannot_precede_the_pack_lifetime(p5):
+    """Nothing can be recycled before anything has been scrapped."""
+    m = L.integrated.build(p5, pack_life=10, mipgap=1e-3)
+    m.optimize()
+    assert m.SolCount > 0
+    for row in L.recycled_share(m):
+        if row["year"] < 10:
+            assert row["recycled"] < 1e-6, (
+                f"recycled material in year {row['year']}, before any pack "
+                f"could have been scrapped")
+
+
+def test_closing_the_loop_cannot_cost_more(p5):
+    """Dual feedstock adds an option without removing an obligation.
+
+    If this ever fails, the `rec_sink` constraint has gone missing and recycled
+    material is silently vanishing - which reports a CHEAPER answer, not an
+    error.
+    """
+    on = L.integrated.build(p5, allow_dual_feedstock=True, mipgap=1e-4)
+    on.optimize()
+    off = L.integrated.build(p5, allow_dual_feedstock=False, mipgap=1e-4)
+    off.optimize()
+    assert on.ObjVal <= off.ObjVal + 1e-6
+
+
+def test_the_collapse_invariant_holds(p5):
+    """Two identical free-trading regions must equal one region, doubled.
+
+    Asserted on the LP relaxation, where it is exact. The MILP difference is
+    integer lumpiness, which is real, and is returned as a diagnostic.
+    """
+    r = L.collapse_test(p5)
+    assert r["passed"], f"the collapse invariant failed at {r['rel_lp']:.2e}"
+    assert r["rel_lp"] < 1e-9
+    assert r["lp_multi"] > 1.0, "the relaxation solved to ~0; it was not copied"
+
+
+def test_recycling_bound_is_an_inequality():
+    """Scrap BOUNDS what recycling can process; it is not a quota.
+
+    As an equality the model would be forced to recycle everything it ever
+    sold, in every period. Checked in the source because the distinction is
+    invisible in any solved objective.
+    """
+    import inspect
+    src = inspect.getsource(L.integrated.build)
+    block = src[src.index("def pack_period"):]
+    block = block[:block.index("m.addConstrs((f.sum(chain[-1]")]
+    assert "<=" in block and "recovery *" in block, \
+        "the recycling availability constraint is no longer an inequality"
+
+
 def test_every_stochastic_entry_point_accepts_a_mipgap():
     """These functions difference expectations 0.01% apart against each other.
 

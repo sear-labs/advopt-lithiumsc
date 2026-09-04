@@ -10,6 +10,8 @@
   "04c_exact_miqp.ipynb": 11,
   "04d_stackelberg.ipynb": 3,
   "04e_policy.ipynb": 2,
+  "04f_interdiction.ipynb": 0,
+  "05_integrated_core.ipynb": 0,
   "_01_deterministic": [
     "2 x the -9 in $10^{-9}$",
     "46,353.6 - the annual-mesh figure at the OLD 0.005 MIP gap, recorded in section 12.1 to show why the gap was tightened. By design it no longer reproduces."
@@ -39,8 +41,11 @@
   "_04e_policy": [
     "2 x the -9 in $10^{-9}$"
   ],
+  "_04f_interdiction": 0,
+  "_05_integrated_core": 0,
   "_comment": "Adjudicated counts from tools/prosecheck.py. A number here is a figure a human has checked and accepted; the gate is that the count must not RISE. Raise an entry only with a note below saying which reading was accepted and why.",
   "_note_02_stochastic": "Adjudicated 2026-09-03, all six accepted as legitimate: the exponent in $10^{-9}$; the citation years 2016 and 2018 (Gade et al., Boland et al.); 20,000 and 1,000,000, which are the scenario counts the CITED source work tests block asynchrony at, not results of this notebook; and 350 from the suggested RHO_SWEEP in Things to try. One flag was a real defect and was FIXED rather than baselined: the prose said 31 units out of 25,700, a rounding, where the run gives 25,682.5.",
   "_note_02bc": "Both are ZERO, adjudicated 2026-09-03: every number in their prose comes from a printed output. 02b deliberately quotes NO wall times - they moved between two runs on the same laptop, so the prose states the ordering and the table prints the reader's own timings.",
-  "_note_03": "Adjudicated 2026-09-03. Both are 1 and it is the same flag in both: the phrase 'a 1990s plant' in the shared vintage-efficiency section, which is rhetoric about plant vintages and not a result."
+  "_note_03": "Adjudicated 2026-09-03. Both are 1 and it is the same flag in both: the phrase 'a 1990s plant' in the shared vintage-efficiency section, which is rhetoric about plant vintages and not a result.",
+  "_note_g6": "Both ZERO, adjudicated 2026-09-03: every number in their prose comes from a printed output."
 }
