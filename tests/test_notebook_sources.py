@@ -75,7 +75,11 @@ def test_builder_audit_passes(tag):
     )
     assert row["orphan_code_cells"] == 0, "a code cell has no markdown above it"
     assert row["predict_prompts"] >= 1, "no predict-before-you-run prompt"
-    assert row["agreement_assert"], "no agreement assertion"
+    assert row["agreement_assert"] or row["agreement_exempt"], (
+        "no agreement assertion, and no NO_AGREEMENT_ASSERTION reason declared "
+        "in the builder. A teaching notebook that duplicates the package needs "
+        "the assertion; one that duplicates nothing must say so."
+    )
     assert row["blank_markers"] == 0, "these are worked examples, not exercises"
     assert row["knob_shadowing"] == 0, (
         "a later cell rebinds a name the shared structure cell defines. Part 2's "

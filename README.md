@@ -41,6 +41,8 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 
 | Notebook | What it covers | |
 |---|---|---|
+| `notebooks/00_start_here.ipynb` | **Start here.** Holds no model: it calls the package and reproduces every headline number in under a minute, so you know the install works | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_start_here.ipynb) |
+| `notebooks/00_concepts.ipynb` | The concepts guide: 23 short sections, each an explanation plus one demo small enough to check by hand. Also the shape every other notebook was written toward | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/00_concepts.ipynb) |
 | `notebooks/01_deterministic.ipynb` | The deterministic network MILP, and four modelling choices that move the answer more than the data does: capex timing, investment granularity, learning, foresight | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/01_deterministic.ipynb) |
 | `notebooks/02_stochastic.ipynb` | Two-stage stochastic programming: nonanticipativity, EVPI and VSS, and why VSS measures how much you commit rather than how uncertain you are; progressive hedging and its rho trap | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02_stochastic.ipynb) |
 | `notebooks/02b_benders.ipynb` | Benders / L-shaped decomposition: cuts from recourse duals, multicut against single cut, and what decomposition actually buys (it is not speed) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02b_benders.ipynb) |
@@ -57,8 +59,11 @@ The badge is a one-click path: it clones this repo, `pip install -e .`, and runs
 and no account beyond a Google login. **The `USERNAME` placeholder in the badge and in each
 notebook's cell 0 must be replaced with the real GitHub owner before the badge resolves.**
 
-The other eight notebooks are still at the repository root in their pre-migration form
-(`Part0_Concepts_Guide.ipynb` and friends) and are migrated in Phase 2 of `PLAN.md`.
+**The migration is complete.** All fifteen notebooks live in `notebooks/`, are generated from
+`tools/build_notebooks/`, and ship executed. The pre-migration originals that used to sit at the
+repository root are gone — every one of them has a counterpart above, and several were corrected
+along the way rather than merely moved. `PLAN.md` and `HANDOFF.md` describe how it was done and
+are kept as a record; they are not current instructions.
 
 ---
 
@@ -89,6 +94,8 @@ src/lithium/              the streamlined track
   data/                     a copy of data/raw/, shipped as package data
 
 notebooks/                the teaching track
+  00_start_here.ipynb       the thin front door: calls the package, holds no model
+  00_concepts.ipynb         23 concepts, one demo each; the template for the rest
   01_deterministic.ipynb    the network MILP, and four choices that move the answer
   02_stochastic.ipynb       the extensive form and progressive hedging, by hand
   02b_benders.ipynb         L-shaped by hand; cuts built from recourse duals

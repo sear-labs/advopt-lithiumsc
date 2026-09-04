@@ -40,6 +40,8 @@ LESSON_MARK = "THE FUNCTION IS THE LESSON"
 
 # every notebook the builders can produce, in series order
 BUILDERS = {
+    "00": "build_notebooks.nb_00",
+    "start": "build_notebooks.nb_start",
     "01": "build_notebooks.nb_01",
     "02": "build_notebooks.nb_02",
     "02b": "build_notebooks.nb_02b",
@@ -165,6 +167,11 @@ def audit(tag: str, cells) -> dict:
                 f"{tag} cell {i}: {LESSON_MARK} needs a reason after it, "
                 f"stating why this function is the lesson rather than an "
                 f"abstraction hiding it. Got: {line.strip()!r}")
+    reason = getattr(load(tag), "NO_AGREEMENT_ASSERTION", "")
+    if reason and len(reason.strip()) < 60:
+        raise SystemExit(
+            f"{tag}: NO_AGREEMENT_ASSERTION is set but its reason is too short. "
+            f"State why this notebook has nothing to compare against.")
     exempt = {i for i, _ in carried} | {i for i, _ in is_lesson}
     teaching = [(i, t) for i, t in code_before_wrap if i not in exempt]
     early_defs = [(i, l) for i, t in teaching
@@ -186,6 +193,7 @@ def audit(tag: str, cells) -> dict:
                             if k == "md" and "Predict before you run" in t),
         agreement_assert=any(k == "code" and "disagree" in t and "assert" in t
                              for k, t in cells),
+        agreement_exempt=bool(getattr(load(tag), "NO_AGREEMENT_ASSERTION", "")),
         blank_markers=sum(1 for _, t in cells if "YOUR CODE HERE" in t),
         knob_shadowing=len(_knob_shadowing(cells)),
     )
@@ -214,8 +222,9 @@ def main() -> int:
         if row["defs_in_teaching"]:
             failed.append(f"{tag}: {row['defs_in_teaching']} unmarked function "
                           f"definition(s) in the teaching section")
-        if not row["agreement_assert"]:
-            failed.append(f"{tag}: no agreement assertion")
+        if not row["agreement_assert"] and not row["agreement_exempt"]:
+            failed.append(f"{tag}: no agreement assertion, and no "
+                          f"NO_AGREEMENT_ASSERTION reason declared")
         if row["orphan_code_cells"]:
             failed.append(f"{tag}: {row['orphan_code_cells']} code cell(s) with "
                           f"no markdown above")
@@ -233,7 +242,7 @@ def main() -> int:
                   f"no outputs - execute it before committing)")
 
     keys = ["notebook", "cells", "markdown", "wrap_at", "carried_over",
-            "fn_is_lesson", "knob_shadowing",
+            "fn_is_lesson", "knob_shadowing", "agreement_exempt",
             "defs_in_teaching",
             "longest_teaching_cell", "orphan_code_cells", "predict_prompts",
             "agreement_assert", "blank_markers"]

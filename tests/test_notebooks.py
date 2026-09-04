@@ -19,6 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 
 # kept in step with tools/build_notebooks/build.py
 LESSON_MARK = "THE FUNCTION IS THE LESSON"
+# a notebook with nothing to compare against must say so in its own prose
+EXEMPTION_PHRASE = "There is no agreement assertion at the end of this notebook"
 NOTEBOOKS = sorted((ROOT / "notebooks").glob("*.ipynb"))
 
 
@@ -37,6 +39,16 @@ def test_notebook_has_an_agreement_assertion(path):
     sources = ["".join(c.source) for c in nb.cells if c.cell_type == "code"]
     imports_package = any("lithium" in s for s in sources)
     asserts_agreement = any("disagree" in s and "assert" in s for s in sources)
+    # A notebook may be exempt, but it has to SAY so where a reader will see it,
+    # not only in its builder. Part 0 is the documented case: it duplicates
+    # nothing in the package, so it has nothing to disagree with.
+    md = "\n".join("".join(c.source) for c in nb.cells if c.cell_type == "markdown")
+    exempt = EXEMPTION_PHRASE in md
+    if exempt:
+        assert len(md.split(EXEMPTION_PHRASE, 1)[1].strip()) > 80, (
+            f"{path.name} claims the agreement exemption but does not explain it"
+        )
+        return
     assert imports_package, f"{path.name} never imports the package to compare against"
     assert asserts_agreement, f"{path.name} has no agreement assertion"
 
