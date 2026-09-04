@@ -636,7 +636,15 @@ for cm in ("annualized", "lumpsum"):
     for lm in ("endogenous", "none"):
         r = solve_variant(capex_mode=cm, learning=lm)
         label = f"capex={cm}, learning={lm}"
-        plans[label] = tuple(sorted(r["plan"].items()))
+        # float("%.7g") first: two solves inside the same MIP gap can land on
+        # equally optimal vertices whose capacities differ in the last digits.
+        # CI saw 1256.4491 where this machine saw 1256.4493 - 1.6e-7 relative,
+        # well inside the 1e-6 gap - and an exact tuple comparison called that a
+        # different plan. The KEYS still compare exactly, so a genuinely
+        # different decision still trips the assertion below; only the trailing
+        # digits are forgiven.
+        plans[label] = tuple(sorted((k, float(f"{v:.7g}"))
+                                    for k, v in r["plan"].items()))
         rows.append(dict(variant=label, objective=round(r["obj"], 1),
                          builds=len(r["plan"]),
                          capacity=round(sum(r["plan"].values()), 1),

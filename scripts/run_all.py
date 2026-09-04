@@ -1106,7 +1106,14 @@ def run_03(ctx):
             assert r["obj"] is not None, f"{cm}/{lm} found no solution"
             assert r["short"] < 1e-6, f"{cm}/{lm} leaves demand unmet"
             label = f"capex={cm}, learning={lm}"
-            plans[label] = tuple(sorted(r["plan"].items()))
+            # float("%.7g"): two solves inside the same MIP gap can land on
+            # equally optimal vertices whose capacities differ in the last
+            # digits. CI saw 1256.4491 where this machine saw 1256.4493 -
+            # 1.6e-7 relative, inside the 1e-6 gap - and an exact tuple
+            # comparison called that a different plan. Keys still compare
+            # exactly, so a real difference still trips the assertion.
+            plans[label] = tuple(sorted((k, float(f"{v:.7g}"))
+                                        for k, v in r["plan"].items()))
             rows.append(dict(variant=label, objective=round(r["obj"], 1),
                              builds=r["builds"], capacity=r["capacity"],
                              first_year=min(r["build_years"]),

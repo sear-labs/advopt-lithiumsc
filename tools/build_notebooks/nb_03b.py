@@ -406,7 +406,12 @@ for lm in ("none", "capacity", "production", "both"):
     res[lm] = mm
     pl = {k: round(mm._v["size"][k].X, 6)
           for k in BUILD if mm._v["build"][k].X > 0.5}
-    plans[lm] = tuple(sorted(pl.items()))
+    # float("%.7g") first: two solves inside the same MIP gap can land on
+    # equally optimal vertices whose capacities differ in the last digits,
+    # and an exact tuple comparison calls that a different plan. CI hit
+    # exactly that in Part 3 (1256.4491 against 1256.4493). Keys still
+    # compare exactly, so a real difference still trips section 13.
+    plans[lm] = tuple(sorted((k, float(f"{v:.7g}")) for k, v in pl.items()))
     rows.append(dict(learning=lm, objective=round(mm.ObjVal, 1),
                      capex=round(mm._e["capex"].getValue(), 1),
                      opex=round(mm._e["operate"].getValue(), 1),
