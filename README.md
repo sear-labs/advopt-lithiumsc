@@ -47,7 +47,9 @@ Gurobi is required. The free `pip` licence is enough for everything in `notebook
 | `notebooks/02_stochastic.ipynb` | Two-stage stochastic programming: nonanticipativity, EVPI and VSS, and why VSS measures how much you commit rather than how uncertain you are; progressive hedging and its rho trap | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02_stochastic.ipynb) |
 | `notebooks/02b_benders.ipynb` | Benders / L-shaped decomposition: cuts from recourse duals, multicut against single cut, and what decomposition actually buys (it is not speed) | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02b_benders.ipynb) |
 | `notebooks/02c_cvar.ipynb` | CVaR, minimax and a hybrid; why a solution vector is not a set of results, and how one plan reported three different average costs | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/02c_cvar.ipynb) |
-| `notebooks/03_network_core.ipynb` | The network-core MILP built block by block: semi-continuous sizing, vintage yields, SOS2 learning — and four variants that share one build plan | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03_network_core.ipynb) |\n| `notebooks/03b_production_learning.ipynb` | A second learning channel, separable from the first; whether a planner would overproduce to learn faster; local content as the lever that forces disposal | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03b_production_learning.ipynb) |\n| `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
+| `notebooks/03_network_core.ipynb` | The network-core MILP built block by block: semi-continuous sizing, vintage yields, SOS2 learning — and four variants that share one build plan | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03_network_core.ipynb) |
+| `notebooks/03b_production_learning.ipynb` | A second learning channel, separable from the first; whether a planner would overproduce to learn faster; local content as the lever that forces disposal | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/03b_production_learning.ipynb) |
+| `notebooks/04ab_planner_and_game.ipynb` | Cooperative planner and its Pareto frontier; the first game, at a fixed price; the cost of rivalry and a bound that looks violated | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04ab_planner_and_game.ipynb) |
 | `notebooks/04c_cournot.ipynb` | Cournot competition with endogenous price; piecewise-linear revenue; iterated best response; collusion benchmark | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_cournot.ipynb) |
 | `notebooks/04c_exact_miqp.ipynb` | The same game as a true MIQP; what a piecewise approximation costs, and why that cost stops being predictable inside a game | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04c_exact_miqp.ipynb) |
 | `notebooks/04d_stackelberg.ipynb` | Bilevel programs; KKT conditions; big-M complementarity; exact linearisation of a bilinear term; entry deterrence | [![Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/USERNAME/lithium-modelling/blob/main/notebooks/04d_stackelberg.ipynb) |
@@ -62,8 +64,9 @@ notebook's cell 0 must be replaced with the real GitHub owner before the badge r
 **The migration is complete.** All fifteen notebooks live in `notebooks/`, are generated from
 `tools/build_notebooks/`, and ship executed. The pre-migration originals that used to sit at the
 repository root are gone — every one of them has a counterpart above, and several were corrected
-along the way rather than merely moved. `PLAN.md` and `HANDOFF.md` describe how it was done and
-are kept as a record; they are not current instructions.
+along the way rather than merely moved. `docs/` keeps the durable half of the planning: why the
+two-track split exists, the audit that motivated it, and which duplicated function won each
+adjudication. Both are records, not instructions.
 
 ---
 
@@ -189,6 +192,6 @@ none contains one.
 | | |
 |---|---|
 | `CLAUDE.md` | the code and teaching standard, and the boundary between them |
-| `PLAN.md` | the two-track migration, phase by phase |
-| `AUDIT_AND_REMEDIATION_PLAN.md` | the measured findings behind it (§2's ordering is superseded) |
+| `docs/design-rationale.md` | why two tracks, and which duplicated function won each adjudication |
+| `docs/audit-2026-09-02.md` | the measured findings that motivated the split |
 | `PROJECT_JOURNAL.md` | the modelling findings, notebook by notebook |

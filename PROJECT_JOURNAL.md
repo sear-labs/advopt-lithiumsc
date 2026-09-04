@@ -270,7 +270,7 @@ depend on a rationing rule deserve suspicion. Both figures re-executed 2026-09-0
 *capital formation* — the durable form of deterrence, which then compounds through the learning
 channel. This entry previously read "~20%", carried over from a stale Cournot figure of 11,527;
 Part 4d's own cells 28 and 35 still quote that stale pair and are corrected when that notebook is
-migrated (`PLAN.md` Phase 2).
+migrated (done 2026-09-03).
 
 **Collusion shuts the entrant down entirely.** Under joint profit maximisation in Part 4c, R2 sells
 zero and builds nothing; R1 serves both markets alone, and the cartel's profit (22,869.98) is exactly
@@ -295,7 +295,7 @@ domestically.
 > **Verification status (2026-09-03).** The Part 4b, 4c and 4d figures above come from executions on
 > that date. The Part 4e figures (tariffs, quotas, local content) and the stochastic-programming
 > figures have **not** been re-executed since, so treat them as claims pending re-verification when
-> those notebooks are migrated — `PLAN.md` Phase 2. Three of the numbers in this list were found stale
+> those notebooks are migrated — done 2026-09-03. Three of the numbers in this list were found stale
 > when their notebooks were re-run; assume others are.
 
 **Entry deterrence is robust to moderate intervention, then breaks suddenly.** Follower capacity is

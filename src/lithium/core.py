@@ -8,7 +8,7 @@ learning modes. One decision maker, so it is a planning model, not a game.
 chain for a *firm*; this builds a six-site network for a *planner*. They share no
 code and no instance — see `network_instance.py`.
 
-The adjudication (`PLAN.md` §5, group 3): `build` appears in Parts 1, 2 and 5.
+The adjudication (`docs/design-rationale.md` §6): `build` appears in Parts 1, 2 and 5.
 Parts 1 and 2 differ by 9 lines and it is a **feature** — Part 2 adds a `mipgap`
 argument, because progressive hedging solves subproblems to a tighter gap than
 the 0.005 a standalone solve wants. Part 2's version is the one here, with

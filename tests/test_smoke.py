@@ -4,7 +4,7 @@ Not testing for research correctness — testing that nothing is broken. This is
 what CI runs on every push, and it is the single highest-value test for research
 code.
 
-The interesting one here is `test_policy_superset_collapses`: `PLAN.md` §5
+The interesting one here is `test_policy_superset_collapses`: `docs/design-rationale.md` §6
 adjudicated the two versions of `add_region` as a *feature*, not drift, on the
 grounds that Part 4e's superset reduces exactly to Part 4c's base version when
 the policy dictionaries are empty. That claim is the reason there is one
@@ -149,7 +149,7 @@ def test_no_negative_quantities(setup):
 
 
 def test_policy_superset_collapses(setup):
-    """PLAN.md §5: 4e's add_region reduces exactly to 4c's when policy is empty.
+    """docs/design-rationale.md §6: 4e's add_region reduces exactly to 4c's when policy is empty.
 
     This is the assertion that justifies having one implementation instead of
     two. If it ever fails, the superset is no longer a superset.
@@ -337,7 +337,7 @@ def test_core_learning_never_raises_cost(core):
 
 
 def test_core_mipgap_collapse(core):
-    """PLAN.md group 3: Part 2's build adds `mipgap`; None must reproduce Part 1."""
+    """docs/design-rationale.md §6: Part 2's build adds `mipgap`; None must reproduce Part 1."""
     iy = list(range(1, 21, 3))
     a = L.build(core, invest_years=iy, mipgap=None)
     a.optimize()

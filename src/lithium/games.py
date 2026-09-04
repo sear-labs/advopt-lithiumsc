@@ -9,7 +9,7 @@ Four things live here, and they are the four the notebook builds by hand:
     market_outcome         prices, quantities and shares implied by a profile
 
 `best_response_cournot` and `joint_profit_max` were each duplicated across
-several notebooks; the `PLAN.md` §5 adjudication found every copy identical
+several notebooks; the `docs/design-rationale.md` §6 adjudication found every copy identical
 after Phase 0, so there is one version and this is it.
 """
 from __future__ import annotations

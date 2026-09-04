@@ -1,7 +1,7 @@
 """One region's vertically-integrated chain, attached to a Gurobi model.
 
 This is the single implementation of `add_region`. Across the notebook series
-there were two versions of it, and the adjudication in `PLAN.md` §5 found the
+there were two versions of it, and the adjudication in `docs/design-rationale.md` §6 found the
 difference was a **feature, not drift**: Part 4e's version is a strict superset
 of Part 4c's, adding quotas, a local-content floor, and a tariff folded into the
 transport cost. It is already self-disabling — with `tariff`, `quota` and

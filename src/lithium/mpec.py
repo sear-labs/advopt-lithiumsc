@@ -1,6 +1,6 @@
 """Stackelberg leadership as a single-level MPEC.
 
-`PLAN.md` §1 listed `stackelberg` under `games.py`. It lives in its own module
+the original plan listed `stackelberg` under `games.py`. It lives in its own module
 instead, for one reason worth stating rather than quietly ignoring: `games.py`
 holds *simultaneous-move* models, where every firm solves the same kind of
 problem, and this holds a **bilevel** model, where the follower's problem has
