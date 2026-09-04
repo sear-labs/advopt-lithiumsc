@@ -893,14 +893,47 @@ flow network (4f) and the integrated core with its recycling loop (5).
   sufficient.** A live WLS key sat in a code cell of `Part4c_exact_MIQP.ipynb`
   (now `notebooks/04c_exact_miqp.ipynb`) and in a markdown example in Parts 1, 2
   and 3, and entered the repository in its first commit — found 2026-09-03 while
-  measuring which notebooks needed a licence, not by any guard. The key was
-  scrubbed from all 29 commits on 2026-09-03 and the credential rotated;
-  **rotation was the remedy, the scrub was defence in depth**, and neither
-  removes it from OneDrive's own version history. A path-based rule cannot see a secret pasted into a
-  notebook. `tools/credscan.py` scans **content** and runs in CI; run it before
-  any commit that touches a notebook. Licences are read from
-  `GRB_WLSACCESSID` / `GRB_WLSSECRET` / `GRB_LICENSEID` or a Colab secret, never
-  from a literal.
+  measuring which notebooks needed a licence, not by any guard. A path-based rule
+  cannot see a secret pasted into a notebook. `tools/credscan.py` scans
+  **content** and runs in CI; run it before any commit that touches a notebook.
+  Licences are read from `GRB_WLSACCESSID` / `GRB_WLSSECRET` / `GRB_LICENSEID`
+  or a Colab secret, never from a literal.
+
+  **This note used to say the credential had been rotated. It had not, and the
+  sentence saying so was the most dangerous thing in this file** — a false
+  all-clear reads as closure, so nobody looks again. Corrected 2026-09-04.
+
+  What is actually true, each part measured rather than recalled:
+
+  - **This repository's history is clean.** The scrub ran. The root commit now
+    reads `WLSACCESSID": "REDACTED-CREDENTIAL-ROTATED"`, and no UUID-shaped
+    literal survives in any of the 38 commits. Verified with the probe validated
+    first — a control search for a string known to be present returned four
+    files before the real search returned none, because *a search that returns
+    zero because it is broken and a search that returns zero because the work is
+    done are indistinguishable from the output.*
+  - **The key itself was live, in two shared Google Drive folders**, in
+    `Part4c_exact_MIQP.ipynb` under `SEAR Labs/PhD Research Course/` and
+    `Classes/Advanced Supply Chain Model Example/`. Confirmed live on
+    2026-09-04 by authenticating with it, without printing it. Both folders are
+    `.edu`-owned and shared, and both files open in Colab.
+  - **The pair in this machine's `GRB_*` variables is a different pair, and is
+    dead.** That is what made the false all-clear plausible: the key nearest to
+    hand had stopped working, which looks exactly like rotation from here.
+
+  **Three lessons, and the first is the one that cost the most.**
+
+  *Scrubbing is not rotating.* The scrub changed what this repository shows.
+  Rotation changes what the credential does, and only the second one closes an
+  exposure. Writing them down in one sentence let the cheap half stand in for
+  the expensive one.
+
+  *A secret that reached one working tree has reached every copy of it.* The
+  guard, the scan and the history rewrite all operate on this repo. The exposure
+  did not stay in this repo, and nothing here could have seen that.
+
+  *Check the credential, not the record of the credential.* One authentication
+  attempt settled in seconds what a day of documentation had got wrong.
 - **The free `pip` Gurobi licence is the deployment constraint:** ~2,000 variables
   for LP/MILP, but only ~150 for QP/MIQP — found by probe, not documentation. The
   instructional notebooks fit. `notebooks/04c_exact_miqp.ipynb` does not, and
