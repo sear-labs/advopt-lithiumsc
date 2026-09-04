@@ -226,6 +226,46 @@ nothing here changes when that thing does. Date it, or make it checkable. The
 branch claim is now a test; the repository name above is dated, because until
 the remote exists there is nothing to check it against.
 
+## A documented deviation: the agreement tolerance in Parts 1 and 3
+
+The Code Standard requires a teaching notebook's agreement assertion to hold to
+**1e-9**. Parts 1 and 3 assert **1e-7**, and this records why rather than
+leaving a reader to find the discrepancy and assume carelessness.
+
+Both notebooks derive the learning curve twice — by hand, and via
+`lithium.curves` — and assert the two derivations agree to better than 1e-12.
+That assertion holds on every platform and is the real check that the package
+reproduces the hand derivation.
+
+The models built from them do not always agree as closely, and the reason is the
+instance rather than either implementation. **Part 3's lumpsum/endogenous case
+has two integer solutions within 3.6e-4 of each other**, so a coefficient
+difference at the 1e-12 level decides which is optimal. On this machine the two
+derivations agree to 1e-16 and the tie never surfaces — measured agreement is
+0.0e+00 to 3.6e-15 across all ten comparisons in the two notebooks. A Linux
+runner picked the other solution, giving 1.35e-09 and 7.63e-09.
+
+No seed, gap or ordering fixes that. Solving at `AGREE_GAP = 1e-11` — tighter
+than the assertion, which is right in principle and retained — changed the CI
+figures not at all, because both sides were already at their own true optimum.
+
+So the notebooks assert what holds everywhere: seven significant figures on the
+objective, **and the same build plan**, which is the stronger claim and the one
+the model exists to make. An objective that ties while the plan differs still
+fails.
+
+Two lessons, and the second is the one worth carrying:
+
+- *A tolerance is a claim about the instance as much as the implementation.*
+  1e-9 asserted that no two integer solutions lie within a billionth of each
+  other. That is a statement about this data, and it is false here.
+- *The agreement assertion is itself subject to the rule it enforces.* This repo
+  found four times during the migration that a loose MIP gap manufactures
+  agreement. The mirror image — an assertion tighter than the computation can
+  support — makes the check pass by coincidence rather than by mathematics, and
+  it went unnoticed because it lived in the checking machinery rather than in
+  the model.
+
 ## Known open defects
 - **`tools/prosecheck.py` barely checks percentages.** Its tolerance has a flat
   0.06 absolute floor applied to the `val / 100` candidate too, where 0.06 means
