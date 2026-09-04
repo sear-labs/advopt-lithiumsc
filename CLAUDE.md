@@ -27,6 +27,26 @@ code with no tests and unpinned dependencies. **Part 4 is the boundary between
 them and is the most important section here.** If you read nothing else, read
 Part 4.
 
+### How copies of this document work
+
+This file is **dropped into project roots as `CLAUDE.md`** and read automatically. Those copies are
+the portable half; anything true of one project only goes **below** them, under a heading
+`# Part 11 — This project specifically`.
+
+**Syncs run one way: source → copy.** An improvement made in a copy survives exactly until the next
+sync overwrites it, and nothing reports the loss. Amendments are approved and committed at the
+source first.
+
+**Stamp the copy with the source commit.** Part 11 opens with the SHA it was taken from:
+
+    Parts 0-10 are a copy of sear-labs/code-standard at 9f6358c (2026-09-04).
+
+Without it a copy can only assert that it is current, which is an assertion that rots silently —
+true when written, and false the moment the source moves, with nothing in the file to say which.
+With it, `git show <sha>:CLAUDE.md` reconstructs exactly what was copied and the drift is one diff
+away. **This is the whole reason a copy in version control is acceptable and a copy inside a zip is
+not** (Part 8): both go stale, and only one can be asked whether it has.
+
 ---
 
 ## Part 1 — The invariant core
@@ -76,6 +96,96 @@ the rule wins unless overridden explicitly.
 > credential, not amending the commit. This is the one mistake in this document
 > that cannot be undone.
 
+### When the sort key and the readable label disagree, carry both
+
+A name has two jobs: sort correctly for a machine, and read correctly for a person. Words rarely do
+both. `Spring`, `Summer`, `Fall` sort alphabetically into `Fall, Spring, Summer` — which is not the
+order they happen in, so every listing of a multi-term course is wrong and nothing says so.
+
+**Number first for the machine, word second for the person:**
+
+    2026_01_Spring_IE_5301_001
+    2026_06_Summer_IE_5301_001
+    2026_08_Fall_IE_5301_001
+
+Use the **month the term starts**, not an ordinal 01/02/03. The month is real information: it
+survives a term shifting, it matches how the registrar and Canvas already think, and it needs no
+key to interpret. An ordinal is an index into a list somebody has to know.
+
+Neither half is sufficient alone. `2026_01` does not read; `2026_Spring` does not sort.
+
+**Research files take the number alone**, because there is no term and no name anyone uses:
+
+    run045-rev01-leo          zero-padded sequence, where order is the point
+    2026-09-03-slug           ISO date, where chronology is the point
+
+Both sort natively and need no label. Adding a season to research output invents a discriminator
+that does not exist.
+
+**The general rule: use the discriminator that actually distinguishes, and make it sort.** For
+course material that is the term. For runs it is the sequence. For records it is the date.
+
+### Repository names lead with what the searcher already knows
+
+    research     subject-method       sear-labs/lithium-optsc
+    teaching     method-application   sear-labs/advopt-lithiumsc
+    published    add journal + year   sear-labs/lithium-optsc-energies-2024
+    websites     website-<name>       personal account
+    grad school  gradschool-<name>    personal account
+
+Lab-era research goes under the organization; personal work under the personal account.
+
+**The first two are deliberately inverted, and the inversion is the rule — not the examples.** A
+researcher searches by subject; a student searches by course. Each form leads with the half its
+audience already has in mind, which is why `advopt-lithiumsc` reads backwards beside
+`lithium-optsc` and is nonetheless correct: the student arriving has a course, not a commodity.
+
+**Anyone who “fixes” the teaching form to match the research one has deleted the reason both
+exist.** That is the failure this paragraph is here to prevent, and it is why the reason is written
+down beside the forms rather than left to be inferred from a pair of examples.
+
+**American spelling** — `optimization`, not `optimisation`. Lowercase, hyphen-separated, numbers
+zero-padded. Not a style preference: see the cost below. A name freezes into every badge URL and
+every install line in the repo, and those are not corrected by a rename.
+
+### Published work carries the journal and year
+
+Research repos are named `subject-method` — `lithium-optsc`, `covid-optsc`. **When the work
+accompanies a published paper, append the journal abbreviation and year:**
+
+    lithium-optsc-energies-2024
+    covid-optsc-ffutr-2021
+
+The suffix does two jobs. It signals at a glance that the repo is a **frozen artifact behind a
+publication** rather than active work, and it says **which** publication — which matters when one
+project yields several papers.
+
+**Use the DOI stem as the abbreviation** where one exists (`ffutr` for Frontiers in Future
+Transportation). It is already the canonical short form and needs no lookup, so two people cannot
+invent different abbreviations for the same journal.
+
+**The suffix is only for published work.** Unpublished research keeps plain `subject-method`. A repo
+with no paper takes no journal — **inventing one would assert a publication that does not exist.**
+`houston-covid-gis` carries no suffix because the map was never written up, even though it sits
+under the same award as `covid-optsc-ffutr-2021`.
+
+This **composes with** the table above rather than replacing it — the suffix is appended to a name
+already formed by those rules, and a teaching repo behind a paper takes it too.
+
+#### Cost of getting it wrong
+
+A repo name freezes **every hosted-notebook badge URL** and **every `pip install git+https://…`
+line** in the repo. A rename redirects the repo URL; it does not redirect anything already copied
+out of it.
+
+**Count both substitutions before renaming, and count them again immediately before running the
+replace.** There are two, and only one looks like a placeholder — `USERNAME` announces itself, while
+the hardcoded repo name sits beside it reading like a real name. Measured in one repo on 2026-09-03:
+62 and 64 occurrences across git-tracked files, against 78 and 80 including compiled bytecode, which
+regenerates and must not be edited. **A replace run against the wrong figure leaves survivors, and
+every survivor is a badge pointing at a repo that does not exist** — which presents as a hosting
+fault, so the search starts in the wrong place.
+
 ---
 
 ## Part 2 — Archetypes
@@ -91,6 +201,12 @@ Pick one. Each lists only its **delta** from Part 1.
 | A trained model + metrics | **E** ML sweeps, A plus tracking |
 | Measurements from physical equipment | **F** acquisition |
 | **Something people learn from** | **T** — see Part 3 |
+| **Nothing that runs** — proposals, deliverables, documents | **not a repo** — see Part 2b |
+
+**Answer the last row first.** Most project folders are not repos and should not be given an
+archetype at all; **Part 2b** covers their shape. Reaching for one because the table offers seven
+is how a proposal folder of Word and Excel acquires a `src/` directory and a test suite nobody
+runs.
 
 **A — Batch analysis pipeline** *(default for research code)*
 `config.yaml`, `scenarios/`, `data/{raw,interim,processed}/`, `src/<pkg>/`,
@@ -129,6 +245,56 @@ calibration, conditions, software version. `run_all.py` doesn't apply; the
 **Mixed projects are normal.** A + B is common. A + C should be *split* into a
 library repo with real tests and an analysis repo that depends on it — don't make
 one repo satisfy both rigor levels. **A + T is the subject of Part 4.**
+
+## Part 2b — Folders that are not repos
+
+Most project folders should never be repos. Proposal folders are Word, PDF and Excel; git stores
+binaries badly and they bloat history permanently. They still need a shape.
+
+### The organising rule
+
+**Separate what ACCUMULATES from what PERSISTS.**
+
+    00-ADMIN/           the folder's own metadata. Zero-prefixed so it sorts first.
+    code/               PERSISTS  - scripts and models, subfoldered by variant
+    reference/          PERSISTS  - source docs, specs, literature, mappings
+    automation/         PERSISTS  - the things that run the above
+    verification/       PERSISTS  - checks, and evidence they passed
+    2025/  2026/        ACCUMULATES - runs, outputs and deliverables of that year
+    design-history/     ACCUMULATES - superseded work, archived by year, not deleted
+
+The test for any new item: **would you look for this by "when", or by "what"?** A 2025 simulation
+run is found by when. The script that produced it is found by what. They go in different places even
+though they were created the same afternoon.
+
+### State where new work goes, or people will guess
+
+A year folder and a function folder sitting at the same level is ambiguous the moment there is new
+code: does it go in `code/` or in `2026/`? **Answer it in the folder's own README rather than leaving
+it to instinct**, because two people will resolve it differently and both will be reasonable.
+
+The Green Building answer, which generalises: **code lives in `code/`, with the year in the
+subfolder name** — `code/ret-2025/`, `code/treed-opt/`. The year folders hold outputs, never sources.
+
+### `00-ADMIN/` earns the zero
+
+It sorts above everything and holds what governs the folder: the README, the naming standard, the
+inventory, the decisions log. Somebody arriving cold reads that first because it is first.
+
+### When a folder becomes a repo
+
+The line is the same granularity rule as Part 2: **a repo is a unit that is versioned, released and
+cloned together.** Ask whether anyone would ever want this *without the rest of it*.
+
+    Has code that runs, and someone might clone it          -> repo, archetype A
+    Finished outputs - papers, posters, reports             -> stays a folder; deposit to Zenodo
+    Active working files                                    -> stays a folder
+    Binaries over 100 MB                                    -> can never be a repo; GitHub rejects them
+
+A folder can contain a repo — `code/treed-opt/` may be its own repo inside a working folder that is
+not. That is normal, and better than promoting the whole tree to satisfy one subdirectory.
+
+---
 
 ---
 
@@ -209,6 +375,59 @@ requirements:
    Without it the wrap reads as a style inconsistency.
 3. **A check that the wrapper reproduces the hand-built result.** See Part 4 —
    this is the requirement people skip and it is the one that earns the wrap.
+
+---
+
+### Leave room — the companion rule, for the prose around the code
+
+*Everything above is about the code. This is about the writing around it, and it
+matters as much.*
+
+> **A teaching notebook sets up a discussion. It does not hold one.**
+
+If the material states its own conclusions, the class period has been spent before
+it begins. The student arrives having been told what to think about the result, and
+there is nothing left to say about it out loud. So: build to the question, pose it,
+and stop.
+
+**Do not write these:**
+
+- *"This is the part that is actually graded."* The rubric says what is graded.
+- *"This is what sinks first-year solar business cases."* That is the finding. Ask
+  instead which assumption moved the answer most.
+- *"That is not a bug — it is the most useful result here."* This tells the reader
+  how to feel about a number before they have thought about it. Ask what would have
+  to be true for it to happen.
+- *"Ten percent means your day selection is wrong."* Ask whether the error is in the
+  selection or the data, and how they could tell.
+- *"What you should take from this,"* followed by bolded conclusions. That is a
+  lecture wearing a list.
+
+**Distinguish a derivation from a punchline.** Showing *how* an $80 price arises from
+two $40 generators is content, and belongs in the notebook. Announcing that it is
+"the single most counter-intuitive number in the course" is a line the instructor
+should get to deliver.
+
+**Keep the example minimal.** The reader should think *"oh, it looks like this"* —
+not read every branch of possible logic, every failure mode, every this-goes-wrong
+warning. Show the shape once. One rewritten example went from 55 cells and 3,558
+words to 17 and 514, and taught more.
+
+**Finish what you ask for.** If the assignment asks for a diagram, the worked example
+draws the diagram. An example that stops short of the deliverable is where the student
+most needed to see the shape.
+
+**Match the reader's scale.** Students model the thing in front of them — a car, a
+house, one plant. An example at national scale is the wrong thing to imitate, and it
+buries the unit conversions that are half the lesson.
+
+**Use placeholders, not answers.** Give a starting bracket and ask the student to
+substitute their own values and cite them. The range is the teaching; the citation is
+the grading.
+
+**This rule and the "predict before you run" prompt are the same instinct.** Both
+refuse to hand over the answer before the reader has formed one. A prediction prompt
+does it for a number; leave room does it for the interpretation.
 
 ---
 
@@ -364,6 +583,42 @@ it."
 - **Tag what you hand out.** Students following a link months later should get the
   version you taught, not the branch you are mid-refactor on.
 
+### Every published repo carries a licence AND a citation
+
+A licence sets the terms of reuse. It does **not** get you cited — MIT requires only that the
+copyright notice travel with the code, and no permissive licence compels a citation. These are two
+mechanisms and a repo meant to be cited needs both.
+
+**LICENSE** — MIT unless the repo has commercial potential, in which case weigh Apache-2.0 for its
+patent grant. UTA encourages open-access models and leaves the choice to the author.
+
+**CITATION.cff** in the repo root. GitHub renders a "Cite this repository" button from it, which is
+the whole point: people cite what is easy to cite, and friction is what stops them, not ethics.
+
+**A "How to cite" section** at the top of the README, with the BibTeX ready to paste.
+
+#### The DOI does not need remembering
+
+Zenodo issues **two** DOIs on a connected repo:
+
+- a **version DOI**, new for every release
+- a **concept DOI**, which always resolves to the latest version and **never changes**
+
+Put the **concept DOI** in `CITATION.cff`. It is correct for the life of the repo, so this is a
+one-time edit and not a per-release chore. The order is forced — you cannot have a DOI before the
+first release:
+
+1. Add `CITATION.cff` with no `doi:` field
+2. Connect the repo in Zenodo, tag a release
+3. Zenodo mints both DOIs
+4. Add the concept DOI to `CITATION.cff` and commit
+5. Never touch it again
+
+For a paper repo, cross-reference both ways: the paper's DOI in `CITATION.cff`, the code's DOI in
+the paper's data-availability statement.
+
+---
+
 ---
 
 ## Part 6 — Verification: the bugs that produce plausible output
@@ -465,6 +720,10 @@ Flag these on sight:
 - Deferring the README and tests to "after the paper is done."
 - A dashboard that recomputes on every page load.
 - Version control by filename: `script_v2.py`, `module.py.bak`, `final_FINAL/`.
+- **A shared document duplicated into a zip, a deck or a PDF.** A copy there cannot be
+  diffed, gitignored or checked by CI, so it does not merely go stale — nothing can tell
+  you that it has. Ship a pointer to the source instead of a copy. (A `CLAUDE.md` in a repo
+  root is fine: it is plain text in version control, so drift is visible.)
 - Library-grade rigor for a one-off analysis (over-engineering) or analysis-grade
   looseness for a shared library (under-engineering).
 - A helper function above the narration of the same material *(in `notebooks/`)*.
@@ -581,6 +840,23 @@ Paste this into a chat when asking an assistant to write or revise teaching code
 # Part 11 — This project specifically
 
 Everything above is portable. This section is not.
+
+**Where the portable half comes from.**
+
+    Parts 0-10 are a copy of sear-labs/code-standard at 204d2ab (2026-09-04).
+
+That stamp is required by the source's own Part 0, and this project is why the
+requirement exists. The line it replaced said the copy was "byte-identical" and
+named no version: true the day it was written, false three commits later, and
+nothing in the file could tell the two apart. A stamped copy can be *asked*
+whether it has drifted — `git show 204d2ab:CLAUDE.md` reconstructs exactly what
+was taken, and `tests/test_standard_sync.py` runs that comparison here.
+
+**Syncs run one way: source → here.** An improvement to the portable half made
+in this file survives until the next sync overwrites it, and nothing reports the
+loss; the test below fails instead, which is the point of it. Amendments are
+approved and committed at the source first. Part 11 is this project's own and
+exists nowhere else.
 
 **Archetype: A + T.** `src/lithium/` is Parts 1–2 territory; `notebooks/` is
 Part 3 territory; Part 4 is the boundary and the reason this project has two

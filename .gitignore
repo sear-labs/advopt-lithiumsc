@@ -46,3 +46,11 @@ results/tables/*
 # --- the notebook's loud no-data fallback writes here; never a real instance
 _generated_fallback/
 notebooks/_generated_fallback/
+
+# --- stale copies of the portable standard. The source is
+# Classes/Code Standard (-> sear-labs/code-standard); CLAUDE.md Parts 0-10
+# here are synced FROM it. These two are 577-line snapshots, referenced by
+# nothing, and shipping them would publish three versions of one document.
+# Files stay on disk; they are just not this repo's to distribute.
+Code and Teaching Standard (portable).md
+dispatch-template.zip
