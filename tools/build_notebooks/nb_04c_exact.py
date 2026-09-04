@@ -138,6 +138,14 @@ has a comment on it.
 Running locally instead? Set the same three names as environment variables. The
 next cell checks the environment first and Colab's secrets second, so the same
 notebook works either way with no edit.
+
+**Finding three values is not the same as them working**, and the next cell
+treats those as two separate questions. A rotated secret, an expired licence or
+a single typo'd character all produce three perfectly present values that
+Gurobi then refuses. So the environment is built inside a `try`, and a refusal
+prints what happened and falls back to the default licence instead of ending
+the notebook on a bare `GurobiError`. Everything below except section 12 runs
+without a key anyway — there is no reason for a bad key to be worse than no key.
 """)
 
     C(r'''
@@ -155,14 +163,23 @@ if not all(found.values()):
     except Exception:
         found = {}
 
+ENV = None           # gp.Model(env=None) means "use the default licence"
 if found and all(found.values()):
-    ENV = gp.Env(params={'WLSACCESSID': found['WLSACCESSID'],
-                         'WLSSECRET': found['WLSSECRET'],
-                         # int(), not the raw value: Colab's userdata.get()
-                         # returns strings, and a string LICENSEID fails quietly
-                         'LICENSEID': int(found['LICENSEID'])})
-else:
-    ENV = None       # gp.Model(env=None) means "use the default licence"
+    try:
+        ENV = gp.Env(params={'WLSACCESSID': found['WLSACCESSID'],
+                             'WLSSECRET': found['WLSSECRET'],
+                             # int(), not the raw value: Colab's userdata.get()
+                             # returns strings, and a string LICENSEID fails quietly
+                             'LICENSEID': int(found['LICENSEID'])})
+    except (gp.GurobiError, ValueError) as err:
+        # FINDING the three values does not mean they WORK. A rotated secret, an
+        # expired licence or one typo'd character all land here, and without this
+        # branch the notebook about licensing dies on an unexplained stack trace.
+        print(f"WLS credentials found, but Gurobi rejected them: {err}")
+        print("Check for a rotated secret, an expired licence, or a typo. The")
+        print("notebook continues on the default licence, so everything below")
+        print("section 12 still runs.\n")
+
 HAVE_WLS = ENV is not None
 
 print("WLS environment:", "ready" if HAVE_WLS else
