@@ -775,18 +775,33 @@ objective **and** the plan.
 """)
 
     C(r'''
+# The agreement assertion below claims 1e-9. A solve given MIPGAP cannot
+# support that: at 1e-6 on an objective of ~46,600 the solver may stop 0.047
+# short of optimal, and two independent formulations may then land on different
+# vertices whose objectives differ far more than 1e-9. On this machine they
+# happen not to; on a Linux runner they did, by 7.6e-09.
+#
+# So the comparison is solved tighter than the agreement it asserts. That is the
+# inverse of the rule this series learned during the migration - a loose gap
+# manufactures agreement - applied to the agreement check itself.
+AGREE_GAP = 1e-11
+
 print(f"{'variant':34s} {'notebook':>12s} {'package':>12s} {'rel':>9s}  plan")
 for cm in ("annualized", "lumpsum"):
     for lm in ("endogenous", "none"):
-        a = solve_variant(capex_mode=cm, learning=lm)
+        a = solve_variant(capex_mode=cm, learning=lm, mipgap=AGREE_GAP)
         b = NC.solve_netcore(nb_st, learning=("capacity" if lm == "endogenous"
                                               else "none"),
                              capex_mode=cm, capex_curve=(pkg_QBP, pkg_CBP),
                              learn_stages=tuple(LEARN_STAGES),
                              allow_dispose=False, pen_short=PEN_SHORT,
-                             mipgap=MIPGAP)
+                             mipgap=AGREE_GAP)
         rel = abs(a["obj"] - b["obj"]) / abs(b["obj"])
-        same = a["plan"] == b["plan"]
+        # the same tolerance the rest of Part 3 uses: keys exact, sizes within
+        # PLAN_RTOL, because equally optimal vertices differ in the last digits
+        same = (set(a["plan"]) == set(b["plan"])
+                and all(abs(a["plan"][k] - b["plan"][k])
+                        <= PLAN_RTOL * max(1.0, abs(b["plan"][k])) for k in b["plan"]))
         print(f"{cm + '/' + lm:34s} {a['obj']:12.4f} {b['obj']:12.4f} {rel:9.1e}"
               f"  {'same' if same else '** DIFFERS **'}")
         assert rel < 1e-9, f"{cm}/{lm}: objectives disagree by {rel:.2e}"

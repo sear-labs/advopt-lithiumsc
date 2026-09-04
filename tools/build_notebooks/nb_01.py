@@ -1078,8 +1078,19 @@ nb_struct = build_core_structure(
     lr=LR, q0=Q0, c_floor_frac=C_FLOOR_FRAC, g_exog=G_EXOG,
 )
 
+# The agreement assertion below claims 1e-9. A solve given MIPGAP cannot
+# support that: at 1e-6 on an objective of ~46,600 the solver may stop 0.047
+# short of optimal, and two independent formulations may then land on different
+# vertices whose objectives differ far more than 1e-9. On this machine they
+# happen not to; on a Linux runner they did, by 7.6e-09.
+#
+# So the comparison is solved tighter than the agreement it asserts. That is the
+# inverse of the rule this series learned during the migration - a loose gap
+# manufactures agreement - applied to the agreement check itself.
+AGREE_GAP = 1e-11
+
 packaged = pkg_build(nb_struct, invest_years=INVEST_YEARS,
-                     capex_mode="annualized", learning="none", mipgap=MIPGAP)
+                     capex_mode="annualized", learning="none", mipgap=AGREE_GAP)
 packaged.optimize()
 
 rel = abs(packaged.ObjVal - hand_built) / abs(hand_built)
@@ -1094,10 +1105,10 @@ print(f"notebook and package agree to {rel:.1e}\n")
 print(f"{'capex mode':12s} {'learning':12s} {'notebook':>14s} {'package':>14s} {'rel':>9s}")
 for cm in CAPEX_MODES:
     for lm in ("none", "exogenous", "endogenous"):
-        a = build(INVEST_YEARS, capex_mode=cm, learning=lm)
+        a = build(INVEST_YEARS, capex_mode=cm, learning=lm, mipgap=AGREE_GAP)
         a.optimize()
         b = pkg_build(nb_struct, invest_years=INVEST_YEARS, capex_mode=cm,
-                      learning=lm, mipgap=MIPGAP)
+                      learning=lm, mipgap=AGREE_GAP)
         b.optimize()
         rel = abs(a.ObjVal - b.ObjVal) / abs(b.ObjVal)
         print(f"{cm:12s} {lm:12s} {a.ObjVal:14,.4f} {b.ObjVal:14,.4f} {rel:9.1e}")
