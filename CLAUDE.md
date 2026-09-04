@@ -154,37 +154,40 @@ flow network (4f) and the integrated core with its recycling loop (5).
   says outright that nothing in it is random, and `04f`'s round-robin is
   deliberately not a random sample.
 
-## Before the first push — two values that must match exactly
+## Before the first push — one value that must match exactly
 
-Neither is a defect in the code. Both are strings this repo has already
-committed to and cannot yet verify, because **there is no remote and
-`sear-labs/advopt-lithiumsc` does not exist** — `gh api` returns 404 as of
-2026-09-04. Whoever creates it decides both, and a near-miss on either produces
-the same failure: a badge that 404s, which reads as a hosting fault rather than
-a naming one, so the search starts in the wrong place.
+**The repository must be created as exactly `sear-labs/advopt-lithiumsc`.** That
+spelling is substituted into 64 badge and install URLs across 33 files, and this
+repo cannot verify it: there is no remote, and `gh api` returned 404 for that
+name on 2026-09-04. A near-miss 404s every badge, and the failure presents as a
+hosting fault rather than a naming one, so the search starts in the wrong place.
 
-- **The repository must be created as exactly `sear-labs/advopt-lithiumsc`.**
-  That spelling is substituted into 64 badge and install URLs across 33 files.
-  It follows the Code Standard's teaching form — `method-application`, American
-  spelling — so `advopt`, not `advop` or `adv-opt`; `lithiumsc`, not
-  `lithium-sc`; and `optimization` nowhere in it, which is why the spelling
-  argument does not arise in the name itself.
-- **The default branch must be `main`, or the badges must change to `master`.**
-  The local branch is `master` (git's old default), and all 45 Colab badges name
-  `/blob/main/`. Pushing without settling this 404s every badge. `main` is the
-  cheaper side: GitHub creates new repos on it, the badges already say it, and
-  this repo has never been pushed so a `git branch -m master main` costs
-  nothing. `sear-labs/code-standard` had the identical split for the identical
-  reason and was renamed to `main` on 2026-09-04, which is where this was found;
-  a stale `master` branch still resolves there until someone deletes it.
+The name follows the Code Standard's teaching form — `method-application`,
+American spelling — so `advopt`, not `advop` or `adv-opt`; `lithiumsc`, not
+`lithium-sc`. Note that the -ise/-ize argument does not arise in the name
+itself, which is a small piece of luck rather than a design.
 
-  *That sentence was itself stale within the hour* — it said `code-standard`'s
-  default **is** `master`, which was true when written and false by the time
-  anyone read it. Fixed 2026-09-04. Two lessons, and the second is the reusable
-  one: the branch trap is real, and **a note asserting the current state of
-  something outside the repository starts decaying immediately.** Where the
-  claim matters, date it or check it — this file now does both, one paragraph
-  after making the same mistake it warns about.
+**The branch half of this is closed.** The local branch was `master` — git's old
+default — while all 45 badges named `/blob/main/`. Renamed to `main` on
+2026-09-04, on Jones's instruction, while the repo still had no remote and the
+change was therefore free. `tests/test_badge_urls.py` now asserts that the
+branch named in the badges is the branch the repo is on, so this cannot drift
+apart again silently in either direction.
+
+The root cause was `init.defaultBranch` being unset, so every local `git init`
+produced `master` while every convention around it assumed `main`. Set to `main`
+machine-wide on 2026-09-04 and confirmed by a fresh `git init`. That is the
+whole of the split: repos created on GitHub were always `main`, repos born from
+`git init` were always `master`.
+
+*One paragraph of this section asserted `sear-labs/code-standard`'s default
+branch **is** `master`, and was false within the hour — that repo was renamed
+once the gap was reported.* Two lessons, and the second is the reusable one: the
+branch trap is real, and **a note asserting the current state of something
+outside this repository starts decaying the moment it is written**, because
+nothing here changes when that thing does. Date it, or make it checkable. The
+branch claim is now a test; the repository name above is dated, because until
+the remote exists there is nothing to check it against.
 
 ## Known open defects
 - **`tools/prosecheck.py` barely checks percentages.** Its tolerance has a flat
