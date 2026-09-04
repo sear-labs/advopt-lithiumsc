@@ -590,47 +590,79 @@ Now the sweep itself.
 """)
 
     C(r'''
+FULL_LICENCE = False   # True only if you have an academic or commercial licence
+
 # Four sizes spanning the licence boundary: 99 scenarios fit the restricted
 # ~2,000-variable cap and 100 do not, so 100 and 200 are the interesting ones.
 SCALE_N = [24, 50, 100, 200]
+LICENCE_CAP = 2000
+
+# The size argument needs no solver: the extensive form is 12 first-stage
+# variables plus 20 per scenario, exactly. So it is stated at every n. Only the
+# TIMING comparison needs the monolithic model actually built, and on the free
+# licence the last two would raise rather than run.
+EF_VARS = {n: 2 * len(NODES) + 20 * n for n in SCALE_N}
+EF_RUNNABLE = [n for n in SCALE_N if FULL_LICENCE or EF_VARS[n] <= LICENCE_CAP]
+if not FULL_LICENCE:
+    print(f"FULL_LICENCE = False, so the extensive form is solved only at "
+          f"n = {EF_RUNNABLE} ({', '.join(str(EF_VARS[n]) for n in EF_RUNNABLE)} "
+          f"variables).")
+    print(f"At n = {[n for n in SCALE_N if n not in EF_RUNNABLE]} it would need "
+          f"{', '.join(str(EF_VARS[n]) for n in SCALE_N if n not in EF_RUNNABLE)}"
+          f" variables and the restricted licence would refuse it - which is this")
+    print("section's whole point, so the refusal is the result and not a problem.")
+    print("L-shaped runs at EVERY size below regardless, because it never builds it.\n")
 
 rows = []
 for n in SCALE_N:
     sc_n = tree(n)
-    m_n = build_ef(sc_n)
-    t0 = time.time()
-    m_n.optimize()
-    t_ef = time.time() - t0
+    ef_sec = ef_obj = None
+    if n in EF_RUNNABLE:
+        m_n = build_ef(sc_n)
+        t0 = time.time()
+        m_n.optimize()
+        ef_sec, ef_obj = round(time.time() - t0, 2), m_n.ObjVal
+        assert m_n.NumVars == EF_VARS[n], "the variable-count arithmetic is wrong"
 
     t0 = time.time()
     r_n = lshaped(sc_n, max_iter=200, verbose=False)
     t_ls = time.time() - t0
 
-    rows.append(dict(n=n, EF_vars=m_n.NumVars, EF_sec=round(t_ef, 2),
-                     LS_master_vars=r_n["master"].NumVars,
+    rows.append(dict(n=n, EF_vars=EF_VARS[n], EF_fits=EF_VARS[n] <= LICENCE_CAP,
+                     EF_sec=ef_sec, LS_master_vars=r_n["master"].NumVars,
                      LS_sec=round(t_ls, 2), LS_iters=r_n["iters"],
-                     rel=f"{abs(r_n['value'] - m_n.ObjVal) / abs(m_n.ObjVal):.1e}",
-                     EF_fits=m_n.NumVars <= 2000))
+                     rel=(f"{abs(r_n['value'] - ef_obj) / abs(ef_obj):.1e}"
+                          if ef_obj is not None else "-")))
 scale = pd.DataFrame(rows)
 
-assert (scale.LS_sec > scale.EF_sec).all(), (
+ran = scale.dropna(subset=["EF_sec"])
+assert (ran.LS_sec > ran.EF_sec).all(), (
     "L-shaped came out faster somewhere; this notebook's framing says it does "
     "not, so the prose would need rewriting rather than the assertion relaxing")
 assert scale.LS_iters.nunique() == 1, \
     "the iteration count moved with n; section 10's claim depends on it not doing so"
+assert (~scale.EF_fits).any(), \
+    "every size fits the licence cap, so this section has nothing to demonstrate"
 print(f"iterations at every scenario count: {sorted(set(scale.LS_iters))}")
-print(f"the extensive form stops fitting ~2,000 variables between "
+print(f"the extensive form stops fitting {LICENCE_CAP:,} variables between "
       f"n = {scale[scale.EF_fits].n.max()} and n = {scale[~scale.EF_fits].n.min()}")
 scale
 ''')
 
     M(r"""
-**The extensive form wins on time at every size, and the assertion above
-requires that** — if it ever stopped being true on your machine, this notebook's
-framing would be wrong and the prose would need rewriting, not the assertion
-relaxing. The *ratio* is deliberately not quoted: it moved between two runs on
-the same laptop while writing this, which is exactly why the assertion tests the
-ordering and not a number.
+**The extensive form wins on time wherever it can be built at all, and the
+assertion above requires that** — if it ever stopped being true on your machine,
+this notebook's framing would be wrong and the prose would need rewriting, not
+the assertion relaxing. The *ratio* is deliberately not quoted: it moved between
+two runs on the same laptop while writing this, which is exactly why the
+assertion tests the ordering and not a number.
+
+**And notice where the timing column stops.** On the default restricted licence
+there is no `EF_sec` for n = 100 or n = 200, because those models are 2,012 and
+4,012 variables and the licence will not solve them. That blank is the finding.
+The `EF_vars` column is still filled in at every size, because it is arithmetic
+— 12 first-stage variables plus 20 per scenario — and needs no solver to state.
+L-shaped has a number in every row.
 
 What changes is the model you have to build. At n = 200 the extensive form needs
 4,012 variables; the master needs 212 and each subproblem 20. On the restricted
