@@ -6,7 +6,7 @@
 >
 >     https://github.com/sear-labs/code-standard    canonical - the same from any machine
 >     a local clone, if you have one                faster; on the UTA desktop that is
->                                                   C:\dev\code-standard\   (outside OneDrive)
+>                                                   C:\Users\jonesec\dev\repo\ops\code-standard\   (outside OneDrive)
 >
 > **Read it first and last.** First because it decides how the work is done; last because a change
 > you are about to make may be one it already settles.
