@@ -25,6 +25,20 @@ Part 3 territory; Part 4 is the boundary and the reason this project has two
 folders holding the same model. See `docs/design-rationale.md` for why, and
 `docs/audit-2026-09-02.md` for the measured findings that motivated it.
 
+**This repository is a series, not a topic library, and that is why it is not part of
+`sear-labs/teaching-code`.** That library has the same shape — executed notebooks, a package, an
+agreement assertion — so the question of why they are two repositories has a written answer, and it
+lives in one place rather than two:
+
+    https://github.com/sear-labs/teaching-code    CLAUDE.md, Part 11,
+                                                  "The series / topic-library boundary"
+
+**It is not restated here**, for the reason the standard gives about copies: a partial restatement
+reads as complete and stops the search. What it decides, in one line, is that a notebook belonging
+here is one that continues a model an earlier notebook built, which is what `02c`, `03b` and `04d`
+each say of themselves in their own opening. Read it before moving a notebook between the two, or
+before starting a third repository of this shape.
+
 `src/lithium/` is a **model-builder library, not a data pipeline** — parameters in
 as arguments, a Gurobi model out. Measured 2026-09-02, before the migration: the
 notebooks contained **zero** lines of file I/O, every number being a literal. They
