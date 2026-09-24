@@ -85,10 +85,23 @@ def searchable_text(path: Path) -> str:
     return "\n".join(parts)
 
 
+def is_text(path: Path) -> bool:
+    """Decide by suffix - except for dotfiles, which have none.
+
+    `Path('.env').suffix` is '' (the leading dot is the name, not an
+    extension), so a suffix test alone skips `.env` and `.env.local`: the one
+    file most likely to hold a live key. Until 2026-09-24 this scanner did
+    exactly that, although `.env` sat in TEXT_SUFFIXES.
+    """
+    if path.name.lower().startswith(".env"):
+        return True
+    return path.suffix.lower() in TEXT_SUFFIXES
+
+
 def scan(paths) -> list[tuple[Path, int, str, str]]:
     hits = []
     for path in paths:
-        if path.suffix.lower() not in TEXT_SUFFIXES or not path.exists():
+        if not is_text(path) or not path.exists():
             continue
         if path.name == "credscan.py":       # this file names the patterns
             continue
